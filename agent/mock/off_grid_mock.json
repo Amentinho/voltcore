@@ -1,0 +1,110 @@
+{
+  "community_id": "extremadura-valle-verde",
+  "name": "Extremadura Valle Verde Community",
+  "mode": "OFF_GRID",
+  "location": "Cáceres, Extremadura, Spain",
+  "coordinates": { "lat": 39.4753, "lng": -6.3724 },
+  "founded": "2025-02-01",
+  "grid_connection": null,
+  "nearest_grid_km": 18.5,
+
+  "installation": {
+    "panel_kwp": 25.0,
+    "panel_count": 60,
+    "inverter": "Fronius Symo GEN24 25.0",
+    "battery_brand": "BYD Battery-Box Premium HVS",
+    "battery_kwh": 48.0,
+    "battery_chemistry": "LFP",
+    "battery_cycles": 6000,
+    "orientation": "South-Southwest",
+    "tilt_degrees": 35,
+    "installation_cost_eur": 40000
+  },
+
+  "iot_devices": [
+    { "type": "inverter",      "brand": "Fronius",  "model": "Symo GEN24",        "api": "REST",         "endpoint": "http://192.168.1.100/solar_api/v1/" },
+    { "type": "energy_monitor","brand": "Shelly",   "model": "Pro 3EM",           "api": "REST",         "endpoint": "http://192.168.1.101/rpc/EM.GetStatus" },
+    { "type": "battery_bms",   "brand": "BYD",      "model": "Battery-Box HVS",   "api": "Modbus TCP",   "endpoint": "192.168.1.102:502" }
+  ],
+
+  "members": [
+    { "id": "M01", "name": "Carmen López",   "wallet": "CarmenWallet111",  "investment_eur": 5000, "share_pct": 12.5, "house": "Casa 1" },
+    { "id": "M02", "name": "Antonio Ruiz",   "wallet": "AntonioWallet222", "investment_eur": 5000, "share_pct": 12.5, "house": "Casa 2" },
+    { "id": "M03", "name": "María Sánchez",  "wallet": "MariaWallet333",   "investment_eur": 5000, "share_pct": 12.5, "house": "Casa 3" },
+    { "id": "M04", "name": "José Martínez",  "wallet": "JoseWallet444",    "investment_eur": 5000, "share_pct": 12.5, "house": "Casa 4" },
+    { "id": "M05", "name": "Isabel Jiménez", "wallet": "IsabelWallet555",  "investment_eur": 5000, "share_pct": 12.5, "house": "Casa 5" },
+    { "id": "M06", "name": "Francisco Díaz", "wallet": "PacoWallet666",    "investment_eur": 5000, "share_pct": 12.5, "house": "Casa 6" },
+    { "id": "M07", "name": "Pilar González", "wallet": "PilarWallet777",   "investment_eur": 5000, "share_pct": 12.5, "house": "Casa 7" },
+    { "id": "M08", "name": "Manuel Moreno",  "wallet": "ManuelWallet888",  "investment_eur": 5000, "share_pct": 12.5, "house": "Casa 8" }
+  ],
+
+  "financials": {
+    "total_investment_eur": 40000,
+    "reference_price_eur_kwh": 0.20,
+    "oracle": null,
+    "debt_repayment_ratio": 0.60,
+    "treasury_ratio": 0.15,
+    "operations_ratio": 0.20,
+    "protocol_fee_ratio": 0.05,
+    "refi_yield_apy": 0.06
+  },
+
+  "monthly_estimates": {
+    "production_kwh": 3000,
+    "self_consumption_kwh": 3000,
+    "excess_kwh": 0,
+    "battery_buffer_kwh": 48,
+    "savings_eur": 600.00,
+    "gross_revenue_eur": 600.00,
+    "debt_repayment_eur": 360.00,
+    "treasury_contribution_eur": 90.00,
+    "months_to_debt_free": 111
+  },
+
+  "settlement_history": [
+    {
+      "period": "2025-02",
+      "production_kwh": 2400,
+      "self_consumption_kwh": 2400,
+      "excess_kwh": 0,
+      "battery_avg_soc_pct": 68.5,
+      "savings_eur": 480.00,
+      "debt_repayment_eur": 288.00,
+      "treasury_eur": 72.00,
+      "debt_remaining_eur": 39712.00
+    },
+    {
+      "period": "2025-03",
+      "production_kwh": 2900,
+      "self_consumption_kwh": 2900,
+      "excess_kwh": 0,
+      "battery_avg_soc_pct": 74.2,
+      "savings_eur": 580.00,
+      "debt_repayment_eur": 348.00,
+      "treasury_eur": 87.00,
+      "debt_remaining_eur": 39364.00
+    },
+    {
+      "period": "2025-04",
+      "production_kwh": 3200,
+      "self_consumption_kwh": 3200,
+      "excess_kwh": 0,
+      "battery_avg_soc_pct": 81.0,
+      "savings_eur": 640.00,
+      "debt_repayment_eur": 384.00,
+      "treasury_eur": 96.00,
+      "debt_remaining_eur": 38980.00
+    },
+    {
+      "period": "2025-05",
+      "production_kwh": 3500,
+      "self_consumption_kwh": 3500,
+      "excess_kwh": 0,
+      "battery_avg_soc_pct": 85.3,
+      "savings_eur": 700.00,
+      "debt_repayment_eur": 420.00,
+      "treasury_eur": 105.00,
+      "debt_remaining_eur": 38560.00
+    }
+  ]
+}

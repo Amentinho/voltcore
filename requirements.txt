@@ -1,0 +1,22 @@
+# VOLTCORE — Python dependencies
+# Install: pip install -r requirements.txt
+
+# Core
+requests>=2.31.0
+python-dotenv>=1.0.0
+schedule>=1.2.0
+
+# Solana integration (Wednesday - Mac only)
+# solana>=0.30.0
+# anchorpy>=0.19.0
+
+# Data & AI
+numpy>=1.24.0
+pandas>=2.0.0
+
+# API / Web
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Utils
+python-dateutil>=2.8.0

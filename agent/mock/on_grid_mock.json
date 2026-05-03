@@ -1,0 +1,113 @@
+{
+  "community_id": "barcelona-gracia-solar",
+  "name": "Barcelona Gràcia Solar Community",
+  "mode": "ON_GRID",
+  "location": "Barcelona, Catalunya, Spain",
+  "coordinates": { "lat": 41.4036, "lng": 2.1744 },
+  "founded": "2025-01-01",
+  "distributor": "Endesa",
+  "grid_connection": "REE Zone 3 — Catalunya",
+
+  "installation": {
+    "panel_kwp": 20.0,
+    "panel_count": 48,
+    "inverter": "SolarEdge SE20K",
+    "orientation": "South",
+    "tilt_degrees": 30,
+    "installation_cost_eur": 30000
+  },
+
+  "members": [
+    { "id": "M01", "name": "Ana García",   "wallet": "AnaWallet111",   "investment_eur": 3000, "cups": "ES0021000012345678AA", "floor": "1A" },
+    { "id": "M02", "name": "Marc Puig",    "wallet": "MarcWallet222",  "investment_eur": 3000, "cups": "ES0021000012345679BB", "floor": "1B" },
+    { "id": "M03", "name": "Laia Ferrer",  "wallet": "LaiaWallet333",  "investment_eur": 3000, "cups": "ES0021000012345680CC", "floor": "2A" },
+    { "id": "M04", "name": "Jordi Mas",    "wallet": "JordiWallet444", "investment_eur": 3000, "cups": "ES0021000012345681DD", "floor": "2B" },
+    { "id": "M05", "name": "Núria Vila",   "wallet": "NuriaWallet555", "investment_eur": 3000, "cups": "ES0021000012345682EE", "floor": "3A" },
+    { "id": "M06", "name": "Pere Soler",   "wallet": "PereWallet666",  "investment_eur": 3000, "cups": "ES0021000012345683FF", "floor": "3B" },
+    { "id": "M07", "name": "Rosa Camps",   "wallet": "RosaWallet777",  "investment_eur": 3000, "cups": "ES0021000012345684GG", "floor": "4A" },
+    { "id": "M08", "name": "Pau Ribas",    "wallet": "PauWallet888",   "investment_eur": 3000, "cups": "ES0021000012345685HH", "floor": "4B" },
+    { "id": "M09", "name": "Marta Costa",  "wallet": "MartaWallet999", "investment_eur": 3000, "cups": "ES0021000012345686II", "floor": "5A" },
+    { "id": "M10", "name": "Tomàs Vidal",  "wallet": "TomasWallet000", "investment_eur": 3000, "cups": "ES0021000012345687JJ", "floor": "5B" }
+  ],
+
+  "financials": {
+    "total_investment_eur": 30000,
+    "reference_price_eur_kwh": 0.22,
+    "oracle": "chainlink_ree_pvpc",
+    "debt_repayment_ratio": 0.60,
+    "treasury_ratio": 0.15,
+    "operations_ratio": 0.20,
+    "protocol_fee_ratio": 0.05,
+    "refi_yield_apy": 0.06
+  },
+
+  "monthly_estimates": {
+    "production_kwh": 2400,
+    "self_consumption_kwh": 1600,
+    "excess_kwh": 800,
+    "savings_eur": 352.00,
+    "excess_revenue_eur": 120.00,
+    "gross_revenue_eur": 472.00,
+    "debt_repayment_eur": 283.20,
+    "treasury_contribution_eur": 70.80,
+    "months_to_debt_free": 94
+  },
+
+  "settlement_history": [
+    {
+      "period": "2025-01",
+      "production_kwh": 1920,
+      "self_consumption_kwh": 1500,
+      "excess_kwh": 420,
+      "oracle_price_eur_kwh": 0.168,
+      "gross_revenue_eur": 400.56,
+      "debt_repayment_eur": 240.34,
+      "treasury_eur": 60.08,
+      "debt_remaining_eur": 29759.66
+    },
+    {
+      "period": "2025-02",
+      "production_kwh": 2150,
+      "self_consumption_kwh": 1550,
+      "excess_kwh": 600,
+      "oracle_price_eur_kwh": 0.155,
+      "gross_revenue_eur": 434.00,
+      "debt_repayment_eur": 260.40,
+      "treasury_eur": 65.10,
+      "debt_remaining_eur": 29499.26
+    },
+    {
+      "period": "2025-03",
+      "production_kwh": 2600,
+      "self_consumption_kwh": 1650,
+      "excess_kwh": 950,
+      "oracle_price_eur_kwh": 0.142,
+      "gross_revenue_eur": 497.90,
+      "debt_repayment_eur": 298.74,
+      "treasury_eur": 74.69,
+      "debt_remaining_eur": 29200.52
+    },
+    {
+      "period": "2025-04",
+      "production_kwh": 2900,
+      "self_consumption_kwh": 1700,
+      "excess_kwh": 1200,
+      "oracle_price_eur_kwh": 0.131,
+      "gross_revenue_eur": 531.20,
+      "debt_repayment_eur": 318.72,
+      "treasury_eur": 79.68,
+      "debt_remaining_eur": 28881.80
+    },
+    {
+      "period": "2025-05",
+      "production_kwh": 3100,
+      "self_consumption_kwh": 1750,
+      "excess_kwh": 1350,
+      "oracle_price_eur_kwh": 0.128,
+      "gross_revenue_eur": 557.80,
+      "debt_repayment_eur": 334.68,
+      "treasury_eur": 83.67,
+      "debt_remaining_eur": 28547.12
+    }
+  ]
+}
