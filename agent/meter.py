@@ -160,7 +160,8 @@ class AnomalyDetector:
         if len(self.history) >= 3:
             avg = sum(self.history[-6:]) / len(self.history[-6:])
             if avg > 0 and abs(reading - avg) / avg > self.sensitivity * 1.5:
-                return True, f"{label} {deviation:.0%} deviation from 6-period average {avg:.2f}"
+                hist_dev = abs(reading - avg) / avg
+                return True, f"{label} {hist_dev:.0%} deviation from 6-period average {avg:.2f}"
 
         return False, ""
 
