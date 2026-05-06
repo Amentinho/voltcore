@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOLTCORE — Community Energy Protocol</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #080c0a;
+    --green: #00ff88;
+    --green-dim: #00ff8833;
+    --green-mid: #00cc6a;
+    --amber: #ffb800;
+    --amber-dim: #ffb80022;
+    --blue: #4af0ff;
+    --blue-dim: #4af0ff22;
+    --red: #ff4466;
+    --surface: #0d1410;
+    --surface2: #131a15;
+    --surface3: #182019;
+    --border: #1e2e22;
+    --text: #c8e0cc;
+    --text-dim: #4a6650;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.4;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* SCANLINE EFFECT */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 48px;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .logo-mark {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: -1px;
+    text-shadow: 0 0 30px var(--green);
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { text-shadow: 0 0 20px var(--green); }
+    50% { text-shadow: 0 0 40px var(--green), 0 0 80px var(--green-mid); }
+  }
+
+  .logo-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--green);
+    text-transform: uppercase;
+  }
+
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: blink 1.4s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--green);
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .network-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 2px;
+  }
+
+  /* SECTION LABELS */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* KPI ROW */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+
+  .kpi {
+    background: var(--surface);
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--green);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.6s ease;
+  }
+
+  .kpi.updated::before { transform: scaleX(1); }
+
+  .kpi-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--green);
+    line-height: 1;
+    transition: all 0.3s ease;
+  }
+
+  .kpi-value.amber { color: var(--amber); }
+  .kpi-value.blue { color: var(--blue); }
+
+  .kpi-unit {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* COMMUNITY PANELS */
+  .communities {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .community-panel {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .community-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  .community-panel.on-grid::before { background: linear-gradient(90deg, var(--green), var(--blue)); }
+  .community-panel.off-grid::before { background: linear-gradient(90deg, var(--amber), var(--green)); }
+
+  .panel-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .panel-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .panel-subtitle {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .mode-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .mode-badge.on-grid {
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid var(--green);
+  }
+
+  .mode-badge.off-grid {
+    background: var(--amber-dim);
+    color: var(--amber);
+    border: 1px solid var(--amber);
+  }
+
+  /* ENERGY FLOW VISUAL */
+  .energy-flow {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .flow-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    width: 100px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .flow-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: var(--surface3);
+    border-radius: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .flow-bar {
+    height: 100%;
+    border-radius: 0;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+
+  .flow-bar::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: white;
+    opacity: 0.6;
+    animation: bar-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes bar-pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 0.1; }
+  }
+
+  .flow-bar.green { background: var(--green); box-shadow: 0 0 10px var(--green-mid); }
+  .flow-bar.blue { background: var(--blue); box-shadow: 0 0 10px var(--blue); }
+  .flow-bar.amber { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+  .flow-bar.red { background: var(--red); }
+
+  .flow-value {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    width: 72px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* STATS GRID */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+  }
+
+  .stat {
+    background: var(--surface);
+    padding: 14px 18px;
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    transition: all 0.4s ease;
+  }
+
+  .stat-value.green { color: var(--green); }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.blue { color: var(--blue); }
+
+  /* MEMBER TABLE */
+  .members-section {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .members-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  .member-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    animation: fadeSlideIn 0.4s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .member-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    width: 130px;
+    flex-shrink: 0;
+  }
+
+  .member-bar-bg {
+    flex: 1;
+    height: 3px;
+    background: var(--surface3);
+  }
+
+  .member-bar {
+    height: 100%;
+    background: var(--green);
+    transition: width 1.5s ease;
+  }
+
+  .member-savings {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green);
+    width: 60px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .member-yield {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--amber);
+    width: 50px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* BOTTOM ROW */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  /* ORACLE PANEL */
+  .oracle-panel {
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .oracle-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .oracle-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .oracle-source {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--blue);
+    letter-spacing: 1px;
+  }
+
+  .price-display {
+    padding: 20px;
+    text-align: center;
+  }
+
+  .current-price {
+    font-family: var(--mono);
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--blue);
+    line-height: 1;
+    text-shadow: 0 0 30px var(--blue);
+    transition: all 0.4s ease;
+  }
+
+  .price-unit {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .price-period {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    margin-top: 10px;
+    display: inline-block;
+    border-radius: 2px;
+  }
+
+  .price-period.peak { background: rgba(255,68,102,0.15); color: var(--red); border: 1px solid var(--red); }
+  .price-period.valley { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue); }
+  .price-period.flat { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+
+  /* PRICE CHART */
+  .price-chart {
+    padding: 0 20px 16px;
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 60px;
+  }
+
+  .price-bar {
+    flex: 1;
+    border-radius: 1px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .price-bar:hover { opacity: 0.8; }
+
+  .price-bar.current { outline: 1px solid white; }
+
+  /* TREASURY PANEL */
+  .treasury-value {
+    font-family: var(--mono);
+    font-size: 38px;
+    font-weight: 700;
+    color: var(--amber);
+    text-align: center;
+    padding: 20px;
+    line-height: 1;
+    text-shadow: 0 0 30px var(--amber);
+    transition: all 0.4s ease;
+  }
+
+  .treasury-breakdown {
+    padding: 0 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .treasury-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .treasury-row-label { color: var(--text-dim); letter-spacing: 1px; }
+  .treasury-row-value { color: var(--amber); }
+  .treasury-row-value.green { color: var(--green); }
+
+  /* SETTLEMENT LOG */
+  .log-panel {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .log-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .log-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .log-body {
+    height: 220px;
+    overflow-y: auto;
+    padding: 8px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .log-entry {
+    padding: 6px 20px;
+    display: flex;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 10px;
+    border-bottom: 1px solid rgba(30,46,34,0.5);
+    animation: logIn 0.3s ease forwards;
+  }
+
+  @keyframes logIn {
+    from { opacity: 0; background: var(--green-dim); }
+    to { opacity: 1; background: transparent; }
+  }
+
+  .log-time { color: var(--text-dim); flex-shrink: 0; }
+  .log-type { flex-shrink: 0; width: 80px; }
+  .log-type.settlement { color: var(--green); }
+  .log-type.oracle { color: var(--blue); }
+  .log-type.treasury { color: var(--amber); }
+  .log-type.anomaly { color: var(--red); }
+  .log-msg { color: var(--text); }
+
+  /* DEBT PROGRESS */
+  .debt-section {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .debt-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .debt-bar-bg {
+    height: 8px;
+    background: var(--surface3);
+    border-radius: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .debt-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--green-mid));
+    transition: width 1s ease;
+    box-shadow: 0 0 12px var(--green-mid);
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-left {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .footer-right {
+    display: flex;
+    gap: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .footer-link {
+    color: var(--green);
+    text-decoration: none;
+    letter-spacing: 1px;
+  }
+
+  /* CYCLE COUNTER */
+  .cycle-counter {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  /* FLASH EFFECT */
+  @keyframes flash-green {
+    0% { background: var(--green-dim); }
+    100% { background: transparent; }
+  }
+
+  .flash { animation: flash-green 0.5s ease forwards; }
+
+  /* RESPONSIVE */
+  @media (max-width: 1100px) {
+    .communities { grid-template-columns: 1fr; }
+    .bottom-row { grid-template-columns: 1fr 1fr; }
+    .kpi-row { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (max-width: 700px) {
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .bottom-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark">⚡ VOLTCORE</div>
+      <div class="logo-sub">Community Energy Protocol</div>
+    </div>
+    <div class="header-right">
+      <div class="cycle-counter" id="cycleCounter">CYCLE #0001</div>
+      <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+      <div class="network-badge">SOLANA DEVNET</div>
+    </div>
+  </header>
+
+  <!-- KPI ROW -->
+  <div class="section-label">Protocol Overview</div>
+  <div class="kpi-row">
+    <div class="kpi" id="kpi-communities">
+      <div class="kpi-label">Communities</div>
+      <div class="kpi-value" id="kv-communities">2</div>
+      <div class="kpi-unit">Active on Solana</div>
+    </div>
+    <div class="kpi" id="kpi-produced">
+      <div class="kpi-label">Energy Produced</div>
+      <div class="kpi-value" id="kv-produced">0.0</div>
+      <div class="kpi-unit">kWh this cycle</div>
+    </div>
+    <div class="kpi" id="kpi-settled">
+      <div class="kpi-label">Total Settled</div>
+      <div class="kpi-value amber" id="kv-settled">€0.00</div>
+      <div class="kpi-unit">Protocol lifetime</div>
+    </div>
+    <div class="kpi" id="kpi-treasury">
+      <div class="kpi-label">Protocol Treasury</div>
+      <div class="kpi-value amber" id="kv-treasury">€0.00</div>
+      <div class="kpi-unit">Staked in ReFi</div>
+    </div>
+    <div class="kpi" id="kpi-debt">
+      <div class="kpi-label">Debt Repaid</div>
+      <div class="kpi-value blue" id="kv-debt">0.0%</div>
+      <div class="kpi-unit">Of total infrastructure</div>
+    </div>
+  </div>
+
+  <!-- COMMUNITY PANELS -->
+  <div class="section-label">Active Communities</div>
+  <div class="communities">
+
+    <!-- ON-GRID -->
+    <div class="community-panel on-grid">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Barcelona Gràcia Solar</div>
+          <div class="panel-subtitle">10 MEMBERS · 20 kWp · ENDESA GRID · BARCELONA</div>
+        </div>
+        <div class="mode-badge on-grid">On-Grid</div>
+      </div>
+
+      <div class="energy-flow">
+        <div class="flow-row">
+          <div class="flow-label">☀ Production</div>
+          <div class="flow-bar-bg"><div class="flow-bar green" id="og-prod-bar" style="width:0%"></div></div>
+          <div class="flow-value" id="og-prod-val">0.0 kWh</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-label">🏠 Self Used</div>
+          <div class="flow-bar-bg"><div class="flow-bar blue" id="og-self-bar" style="width:0%"></div></div>
+          <div class="flow-value" id="og-self-val">0.0 kWh</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-label">⚡ → Grid</div>
+          <div class="flow-bar-bg"><div class="flow-bar amber" id="og-excess-bar" style="width:0%"></div></div>
+          <div class="flow-value" id="og-excess-val">0.0 kWh</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-label">💰 Revenue</div>
+          <div class="flow-bar-bg"><div class="flow-bar green" id="og-rev-bar" style="width:0%"></div></div>
+          <div class="flow-value" id="og-rev-val">€0.00</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat">
+          <div class="stat-label">Savings</div>
+          <div class="stat-value green" id="og-savings">€0.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Excess Revenue</div>
+          <div class="stat-value amber" id="og-excess-rev">€0.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Debt Remaining</div>
+          <div class="stat-value blue" id="og-debt">€30,000</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Debt Repaid</div>
+          <div class="stat-value green" id="og-repaid">€0.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Treasury</div>
+          <div class="stat-value amber" id="og-treasury">€0.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">ReFi Yield APY</div>
+          <div class="stat-value green">6.00%</div>
+        </div>
+      </div>
+
+      <div class="debt-section">
+        <div class="debt-label">
+          <span>INFRASTRUCTURE DEBT</span>
+          <span id="og-debt-pct">0.0% repaid</span>
+        </div>
+        <div class="debt-bar-bg">
+          <div class="debt-bar-fill" id="og-debt-bar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="members-section">
+        <div class="members-label">Member Wallets</div>
+        <div id="og-members"></div>
+      </div>
+    </div>
+
+    <!-- OFF-GRID -->
+    <div class="community-panel off-grid">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Extremadura Valle Verde</div>
+          <div class="panel-subtitle">8 MEMBERS · 25 kWp · 48kWh BATTERY · CÁCERES</div>
+        </div>
+        <div class="mode-badge off-grid">Off-Grid</div>
+      </div>
+
+      <div class="energy-flow">
+        <div class="flow-row">
+          <div class="flow-label">☀ Production</div>
+          <div class="flow-bar-bg"><div class="flow-bar green" id="fg-prod-bar" style="width:0%"></div></div>
+          <div class="flow-value" id="fg-prod-val">0.0 kWh</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-label">🏠 Self Used</div>
+          <div class="flow-bar-bg"><div class="flow-bar blue" id="fg-self-bar" style="width:0%"></div></div>
+          <div class="flow-value" id="fg-self-val">0.0 kWh</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-label">🔋 Battery</div>
+          <div class="flow-bar-bg"><div class="flow-bar amber" id="fg-bat-bar" style="width:75%"></div></div>
+          <div class="flow-value" id="fg-bat-val">75.0%</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-label">💰 Savings</div>
+          <div class="flow-bar-bg"><div class="flow-bar green" id="fg-sav-bar" style="width:0%"></div></div>
+          <div class="flow-value" id="fg-sav-val">€0.00</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat">
+          <div class="stat-label">Savings</div>
+          <div class="stat-value green" id="fg-savings">€0.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Battery SOC</div>
+          <div class="stat-value amber" id="fg-soc">75.0%</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Debt Remaining</div>
+          <div class="stat-value blue" id="fg-debt">€40,000</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Debt Repaid</div>
+          <div class="stat-value green" id="fg-repaid">€0.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Treasury</div>
+          <div class="stat-value amber" id="fg-treasury">€0.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">ReFi Yield APY</div>
+          <div class="stat-value green">6.00%</div>
+        </div>
+      </div>
+
+      <div class="debt-section">
+        <div class="debt-label">
+          <span>INFRASTRUCTURE DEBT</span>
+          <span id="fg-debt-pct">0.0% repaid</span>
+        </div>
+        <div class="debt-bar-bg">
+          <div class="debt-bar-fill" id="fg-debt-bar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="members-section">
+        <div class="members-label">Member Wallets</div>
+        <div id="fg-members"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="section-label">Protocol Intelligence</div>
+  <div class="bottom-row">
+
+    <!-- ORACLE -->
+    <div class="oracle-panel">
+      <div class="oracle-header">
+        <div class="oracle-title">REE Price Oracle</div>
+        <div class="oracle-source">CHAINLINK → SOLANA</div>
+      </div>
+      <div class="price-display">
+        <div class="current-price" id="oracle-price">0.1487</div>
+        <div class="price-unit">€ / kWh</div>
+        <div class="price-period flat" id="oracle-period">FLAT</div>
+      </div>
+      <div class="price-chart" id="price-chart"></div>
+    </div>
+
+    <!-- TREASURY -->
+    <div class="oracle-panel">
+      <div class="oracle-header">
+        <div class="oracle-title">Green Treasury</div>
+        <div class="oracle-source">6% APY · REFI STAKED</div>
+      </div>
+      <div class="treasury-value" id="treasury-total">€0.00</div>
+      <div class="treasury-breakdown">
+        <div class="treasury-row">
+          <span class="treasury-row-label">BARCELONA CONTRIB</span>
+          <span class="treasury-row-value" id="t-og">€0.00</span>
+        </div>
+        <div class="treasury-row">
+          <span class="treasury-row-label">EXTREMADURA CONTRIB</span>
+          <span class="treasury-row-value" id="t-fg">€0.00</span>
+        </div>
+        <div class="treasury-row">
+          <span class="treasury-row-label">REFI YIELD EARNED</span>
+          <span class="treasury-row-value green" id="t-yield">€0.00</span>
+        </div>
+        <div class="treasury-row">
+          <span class="treasury-row-label">PROTOCOL FEES</span>
+          <span class="treasury-row-value" id="t-fees">€0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTLEMENT LOG -->
+    <div class="log-panel">
+      <div class="log-header">
+        <div class="log-title">Settlement Log</div>
+        <div class="live-badge"><div class="live-dot"></div>STREAM</div>
+      </div>
+      <div class="log-body" id="log-body"></div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-left">VOLTCORE v0.1 · COLOSSEUM FRONTIER 2025 · LA FAMILIA TRACK · SPAIN 🇪🇸</div>
+    <div class="footer-right">
+      <a class="footer-link" href="https://github.com/Amentinho/voltcore" target="_blank">GITHUB</a>
+      <span>SOLANA DEVNET</span>
+      <span>CHAINLINK ORACLE</span>
+      <span id="footer-time"></span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+
+const OG = {
+  name: 'Barcelona Gràcia Solar',
+  totalInvestment: 30000,
+  debt: 30000,
+  treasury: 0,
+  totalRepaid: 0,
+  totalYield: 0,
+  totalFees: 0,
+  settledTotal: 0,
+  members: ['Ana García','Marc Puig','Laia Ferrer','Jordi Mas','Núria Vila',
+            'Pere Soler','Rosa Camps','Pau Ribas','Marta Costa','Tomàs Vidal'],
+  memberSavings: new Array(10).fill(0),
+  memberDebtRepaid: new Array(10).fill(0),
+};
+
+const FG = {
+  name: 'Extremadura Valle Verde',
+  totalInvestment: 40000,
+  debt: 40000,
+  treasury: 0,
+  totalRepaid: 0,
+  totalYield: 0,
+  totalFees: 0,
+  settledTotal: 0,
+  members: ['Carmen López','Antonio Ruiz','María Sánchez','José Martínez',
+            'Isabel Jiménez','Francisco Díaz','Pilar González','Manuel Moreno'],
+  memberSavings: new Array(8).fill(0),
+  memberDebtRepaid: new Array(8).fill(0),
+  batterySOC: 75,
+};
+
+let cycleCount = 0;
+let priceHistory = [];
+let totalYieldAccum = 0;
+let totalFeesAccum = 0;
+
+// ─────────────────────────────────────────────
+// ORACLE
+// ─────────────────────────────────────────────
+
+function getSpotPrice() {
+  const hour = new Date().getHours();
+  const base = 0.1487;
+  let price = base;
+  if (hour >= 9 && hour < 22) price *= 1.12;
+  else if (hour < 8) price *= 0.85;
+  price *= (1 + (Math.random() - 0.5) * 0.08);
+  const month = new Date().getMonth() + 1;
+  if ([12,1,2].includes(month)) price *= 1.10;
+  else if ([3,4,5].includes(month)) price *= 0.92;
+  return Math.max(0.05, parseFloat(price.toFixed(4)));
+}
+
+function getPeriodType() {
+  const h = new Date().getHours();
+  if (h >= 9 && h < 22) return 'PEAK';
+  if (h < 8) return 'VALLEY';
+  return 'FLAT';
+}
+
+// ─────────────────────────────────────────────
+// SETTLEMENT ENGINE (JS mirror of Python)
+// ─────────────────────────────────────────────
+
+const DEBT_RATIO      = 0.60;
+const TREASURY_RATIO  = 0.15;
+const OPS_RATIO       = 0.20;
+const FEE_RATIO       = 0.05;
+const REFI_APY        = 0.06;
+
+function settleOnGrid(spotPrice) {
+  // Realistic monthly numbers scaled to cycle
+  const production = 2400 + (Math.random()-0.5)*400;
+  const selfCons   = Math.min(production, 1600 + (Math.random()-0.5)*200);
+  const excess     = production - selfCons;
+
+  const savings       = selfCons * 0.22;
+  const excessRev     = excess * spotPrice;
+  const gross         = savings + excessRev;
+
+  const debtPayment   = gross * DEBT_RATIO;
+  const treasuryContr = gross * TREASURY_RATIO;
+  const fees          = gross * FEE_RATIO;
+  const refiYield     = OG.treasury * (REFI_APY / 12);
+
+  OG.debt         = Math.max(0, OG.debt - debtPayment);
+  OG.totalRepaid += debtPayment;
+  OG.treasury    += treasuryContr + refiYield;
+  OG.totalYield  += refiYield;
+  OG.totalFees   += fees;
+  OG.settledTotal+= gross;
+
+  OG.members.forEach((_, i) => {
+    OG.memberSavings[i]    += savings / OG.members.length;
+    OG.memberDebtRepaid[i] += debtPayment / OG.members.length;
+  });
+
+  return { production, selfCons, excess, savings, excessRev, gross,
+           debtPayment, treasuryContr, fees, refiYield };
+}
+
+function settleOffGrid() {
+  const production = 3000 + (Math.random()-0.5)*600;
+  const selfCons   = production;
+  const savings    = selfCons * 0.20;
+  const gross      = savings;
+
+  // Battery dynamics
+  const hour = new Date().getHours();
+  if (hour >= 8 && hour <= 18) {
+    FG.batterySOC = Math.min(100, FG.batterySOC + Math.random() * 4);
+  } else {
+    FG.batterySOC = Math.max(20, FG.batterySOC - Math.random() * 3);
+  }
+
+  const debtPayment   = gross * DEBT_RATIO;
+  const treasuryContr = gross * TREASURY_RATIO;
+  const fees          = gross * FEE_RATIO;
+  const refiYield     = FG.treasury * (REFI_APY / 12);
+
+  FG.debt         = Math.max(0, FG.debt - debtPayment);
+  FG.totalRepaid += debtPayment;
+  FG.treasury    += treasuryContr + refiYield;
+  FG.totalYield  += refiYield;
+  FG.totalFees   += fees;
+  FG.settledTotal+= gross;
+
+  FG.members.forEach((_, i) => {
+    FG.memberSavings[i]    += savings / FG.members.length;
+    FG.memberDebtRepaid[i] += debtPayment / FG.members.length;
+  });
+
+  return { production, selfCons, savings, gross,
+           debtPayment, treasuryContr, fees, refiYield };
+}
+
+// ─────────────────────────────────────────────
+// UI UPDATES
+// ─────────────────────────────────────────────
+
+function fmt(n, decimals=2) {
+  return n.toLocaleString('en-EU', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+}
+
+function updateKPIs(ogResult, fgResult, spotPrice) {
+  const totalProduced = ogResult.production + fgResult.production;
+  const totalSettled  = OG.settledTotal + FG.settledTotal;
+  const totalTreasury = OG.treasury + FG.treasury;
+  const totalDebt     = OG.totalInvestment + FG.totalInvestment;
+  const totalRepaid   = OG.totalRepaid + FG.totalRepaid;
+  const debtPct       = (totalRepaid / totalDebt * 100);
+
+  setText('kv-produced', fmt(totalProduced, 1));
+  setText('kv-settled',  '€' + fmt(totalSettled));
+  setText('kv-treasury', '€' + fmt(totalTreasury));
+  setText('kv-debt',     fmt(debtPct, 2) + '%');
+
+  flash('kpi-produced');
+  flash('kpi-settled');
+}
+
+function updateOnGrid(result, spotPrice) {
+  const pct = result.production;
+  const max = 3500;
+  setBar('og-prod-bar',   (result.production / max * 100));
+  setBar('og-self-bar',   (result.selfCons / max * 100));
+  setBar('og-excess-bar', (result.excess / max * 100));
+  setBar('og-rev-bar',    (result.gross / 700 * 100));
+
+  setText('og-prod-val',   fmt(result.production, 1) + ' kWh');
+  setText('og-self-val',   fmt(result.selfCons, 1) + ' kWh');
+  setText('og-excess-val', fmt(result.excess, 1) + ' kWh');
+  setText('og-rev-val',    '€' + fmt(result.gross));
+  setText('og-savings',    '€' + fmt(result.savings));
+  setText('og-excess-rev', '€' + fmt(result.excessRev));
+  setText('og-debt',       '€' + fmt(OG.debt, 0));
+  setText('og-repaid',     '€' + fmt(OG.totalRepaid));
+  setText('og-treasury',   '€' + fmt(OG.treasury));
+
+  const debtPct = (OG.totalRepaid / OG.totalInvestment * 100);
+  setText('og-debt-pct',  fmt(debtPct, 2) + '% repaid');
+  setBar('og-debt-bar',   debtPct);
+
+  renderMembers('og-members', OG.members, OG.memberSavings, OG.memberDebtRepaid, '#00ff88');
+}
+
+function updateOffGrid(result) {
+  const max = 4000;
+  setBar('fg-prod-bar', (result.production / max * 100));
+  setBar('fg-self-bar', (result.selfCons / max * 100));
+  setBar('fg-bat-bar',  FG.batterySOC);
+  setBar('fg-sav-bar',  (result.savings / 700 * 100));
+
+  setText('fg-prod-val', fmt(result.production, 1) + ' kWh');
+  setText('fg-self-val', fmt(result.selfCons, 1) + ' kWh');
+  setText('fg-bat-val',  fmt(FG.batterySOC, 1) + '%');
+  setText('fg-sav-val',  '€' + fmt(result.savings));
+  setText('fg-savings',  '€' + fmt(result.savings));
+  setText('fg-soc',      fmt(FG.batterySOC, 1) + '%');
+  setText('fg-debt',     '€' + fmt(FG.debt, 0));
+  setText('fg-repaid',   '€' + fmt(FG.totalRepaid));
+  setText('fg-treasury', '€' + fmt(FG.treasury));
+
+  const debtPct = (FG.totalRepaid / FG.totalInvestment * 100);
+  setText('fg-debt-pct', fmt(debtPct, 2) + '% repaid');
+  setBar('fg-debt-bar',  debtPct);
+
+  renderMembers('fg-members', FG.members, FG.memberSavings, FG.memberDebtRepaid, '#ffb800');
+}
+
+function updateOracle(spotPrice) {
+  const period = getPeriodType();
+  setText('oracle-price', spotPrice.toFixed(4));
+
+  const periodEl = document.getElementById('oracle-period');
+  periodEl.textContent = period;
+  periodEl.className = 'price-period ' + period.toLowerCase();
+
+  priceHistory.push(spotPrice);
+  if (priceHistory.length > 24) priceHistory.shift();
+  renderPriceChart();
+}
+
+function updateTreasury(ogResult, fgResult) {
+  const total = OG.treasury + FG.treasury;
+  const yield_ = OG.totalYield + FG.totalYield;
+  const fees   = OG.totalFees + FG.totalFees;
+
+  setText('treasury-total', '€' + fmt(total));
+  setText('t-og',    '€' + fmt(OG.treasury));
+  setText('t-fg',    '€' + fmt(FG.treasury));
+  setText('t-yield', '€' + fmt(yield_));
+  setText('t-fees',  '€' + fmt(fees));
+}
+
+function renderMembers(containerId, names, savings, debtRepaid, color) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  const maxSavings = Math.max(...savings, 1);
+
+  names.forEach((name, i) => {
+    const row = document.createElement('div');
+    row.className = 'member-row';
+    row.style.animationDelay = (i * 0.05) + 's';
+    row.innerHTML = `
+      <div class="member-name">${name}</div>
+      <div class="member-bar-bg">
+        <div class="member-bar" style="width:${savings[i]/maxSavings*100}%;background:${color}"></div>
+      </div>
+      <div class="member-savings" style="color:${color}">€${fmt(savings[i])}</div>
+      <div class="member-yield">+€${fmt(debtRepaid[i]/100)}</div>
+    `;
+    el.appendChild(row);
+  });
+}
+
+function renderPriceChart() {
+  const el = document.getElementById('price-chart');
+  el.innerHTML = '';
+  if (!priceHistory.length) return;
+
+  const max = Math.max(...priceHistory);
+  const min = Math.min(...priceHistory);
+  const range = max - min || 0.01;
+  const currentHour = new Date().getHours();
+
+  priceHistory.forEach((p, i) => {
+    const bar = document.createElement('div');
+    const heightPct = ((p - min) / range * 80 + 20);
+    const isPeak = true;
+    bar.className = 'price-bar' + (i === priceHistory.length - 1 ? ' current' : '');
+    bar.style.height = heightPct + '%';
+    bar.style.background = p > 0.16 ? '#ff4466' : p > 0.14 ? '#ffb800' : '#00ff88';
+    bar.title = '€' + p.toFixed(4) + '/kWh';
+    el.appendChild(bar);
+  });
+}
+
+function addLog(type, msg) {
+  const el = document.getElementById('log-body');
+  const now = new Date();
+  const time = now.toTimeString().slice(0,8);
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `
+    <span class="log-time">${time}</span>
+    <span class="log-type ${type}">${type.toUpperCase()}</span>
+    <span class="log-msg">${msg}</span>
+  `;
+  el.insertBefore(entry, el.firstChild);
+  while (el.children.length > 40) el.removeChild(el.lastChild);
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function setBar(id, pct) {
+  const el = document.getElementById(id);
+  if (el) el.style.width = Math.min(100, Math.max(0, pct)) + '%';
+}
+
+function flash(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
+
+// ─────────────────────────────────────────────
+// MAIN LOOP
+// ─────────────────────────────────────────────
+
+function tick() {
+  cycleCount++;
+  setText('cycleCounter', 'CYCLE #' + String(cycleCount).padStart(4, '0'));
+
+  const spotPrice = getSpotPrice();
+  const ogResult  = settleOnGrid(spotPrice);
+  const fgResult  = settleOffGrid();
+
+  updateOracle(spotPrice);
+  updateOnGrid(ogResult, spotPrice);
+  updateOffGrid(fgResult);
+  updateKPIs(ogResult, fgResult, spotPrice);
+  updateTreasury(ogResult, fgResult);
+
+  // Log entries
+  addLog('oracle',     `REE PVPC → €${spotPrice.toFixed(4)}/kWh [${getPeriodType()}]`);
+  addLog('settlement', `Barcelona settled €${fmt(ogResult.gross)} → debt -€${fmt(ogResult.debtPayment)}`);
+  addLog('settlement', `Extremadura settled €${fmt(fgResult.gross)} → debt -€${fmt(fgResult.debtPayment)}`);
+  addLog('treasury',   `ReFi yield +€${fmt(ogResult.refiYield + fgResult.refiYield)} (6% APY)`);
+
+  if (Math.random() < 0.08) {
+    addLog('anomaly', `Meter variance detected — cross-validating with PVGIS data`);
+  }
+
+  // Update footer time
+  setText('footer-time', new Date().toUTCString().slice(0,25));
+}
+
+// Init price chart with sample data
+for (let i = 0; i < 12; i++) {
+  priceHistory.push(getSpotPrice());
+}
+renderPriceChart();
+
+// Initial tick then every 4 seconds
+tick();
+setInterval(tick, 4000);
+</script>
+</body>
+</html>
