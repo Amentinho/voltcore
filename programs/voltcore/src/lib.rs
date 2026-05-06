@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("VoLtC0reXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+declare_id!("FRj8srGr4EvzhFgEsQ6x5iHYM9zQYmmuUZApAAy1D2p4");
 
 // ─────────────────────────────────────────────
 // CONSTANTS

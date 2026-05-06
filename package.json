@@ -1,0 +1,15 @@
+{
+  "name": "voltcore",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/Amentinho/voltcore.git",
+  "author": "Amentinho <amentinho87@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@solana/web3.js": "^1.98.4",
+    "chai": "^6.2.2",
+    "ts-mocha": "^11.1.0",
+    "typescript": "^6.0.3"
+  }
+}

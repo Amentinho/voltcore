@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Node
+node_modules/
+yarn-error.log
+
+# Rust build artifacts
+target/
+programs/voltcore/target/
+Cargo.lock
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+agent/__pycache__/
+
+# Simulation state (runtime file)
+agent/simulation_state.json
+
+# Anchor build artifacts (keep keypairs)
+.anchor/
+
+# Env files
+.env
+.env.local

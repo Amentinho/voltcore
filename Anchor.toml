@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-voltcore = "VoLtC0reXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+voltcore = "FRj8srGr4EvzhFgEsQ6x5iHYM9zQYmmuUZApAAy1D2p4"
 
 [registry]
 url = "https://api.apr.dev"
