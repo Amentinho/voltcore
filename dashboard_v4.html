@@ -1,0 +1,2216 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOLTCORE — Community Energy Protocol</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
+<script>
+// Buffer polyfill for browser (web3.js serialize() needs it)
+if(typeof Buffer === 'undefined') {
+  window.Buffer = {
+    from: function(data, enc) {
+      if(typeof data === 'string') {
+        const encoder = new TextEncoder();
+        return encoder.encode(data);
+      }
+      return new Uint8Array(data);
+    },
+    alloc: function(size) { return new Uint8Array(size); },
+    isBuffer: function() { return false; }
+  };
+}
+</script>
+<style>
+:root {
+  --bg:#070a08;--surface:#0c110d;--surface2:#111812;--surface3:#161f17;
+  --border:#1c2b1e;--green:#2dff7f;--green-dim:#2dff7f18;--green-mid:#1acc5e;
+  --amber:#ffcc00;--amber-dim:#ffcc0015;--blue:#38e8ff;--blue-dim:#38e8ff15;
+  --red:#ff3355;--red-dim:#ff335515;--purple:#b060ff;--purple-dim:#b060ff15;
+  --text:#bdd4bf;--text-dim:#3d5940;
+  --mono:'JetBrains Mono',monospace;--display:'Syne',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--display);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(45,255,127,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(45,255,127,0.025) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 20px;min-height:52px;background:rgba(7,10,8,0.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);gap:8px;}
+.nav-logo{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--green);text-shadow:0 0 16px var(--green);}
+.nav-tabs{display:flex;gap:2px;}
+.nav-tab{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);padding:7px 10px;cursor:pointer;border-radius:2px;transition:all 0.2s;background:none;border:none;white-space:nowrap;}
+.nav-tab:hover{color:var(--text);background:var(--surface2);}
+.nav-tab.active{color:var(--green);background:var(--green-dim);}
+.nav-right{display:flex;align-items:center;gap:14px;}
+.lang-toggle{display:flex;gap:2px;border:1px solid var(--border);padding:2px;border-radius:3px;}
+.lang-btn{font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:4px 10px;cursor:pointer;border-radius:2px;background:none;border:none;color:var(--text-dim);transition:all 0.2s;}
+.lang-btn.active{background:var(--green);color:#000;font-weight:700;}
+.live-indicator{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--green);letter-spacing:2px;}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 1.4s infinite;box-shadow:0 0 6px var(--green);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* PAGES */
+.page{display:none;position:relative;z-index:1;}
+.page.active{display:block;}
+.container{max-width:1400px;margin:0 auto;padding:28px;}
+
+/* SECTION HEADER */
+.sh{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+.sh-title{font-size:10px;font-weight:600;letter-spacing:4px;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;}
+.sh-line{flex:1;height:1px;background:var(--border);}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:24px;}
+.kpi{background:var(--surface);padding:18px 18px 14px;}
+.kpi-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
+.kpi-value{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1;transition:all 0.4s;}
+.kpi-unit{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:3px;}
+.green{color:var(--green)}.amber{color:var(--amber)}.blue{color:var(--blue)}.red{color:var(--red)}.purple{color:var(--purple)}
+
+/* COMMUNITY LIST */
+.community-list{display:flex;flex-direction:column;gap:12px;margin-bottom:24px;}
+.comm-card{border:1px solid var(--border);background:var(--surface);overflow:hidden;transition:border-color 0.2s;}
+.comm-card:hover{border-color:rgba(45,255,127,0.3);}
+.comm-card.on-grid{border-top:3px solid var(--green);}
+.comm-card.off-grid{border-top:3px solid var(--amber);}
+.comm-card.night{border-top-color:var(--blue);}
+.comm-header-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 40px;align-items:center;padding:14px 20px;cursor:pointer;gap:12px;transition:background 0.2s;}
+.comm-header-row:hover{background:var(--surface2);}
+.comm-name-col .name{font-size:14px;font-weight:700;margin-bottom:2px;}
+.comm-name-col .sub{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;}
+.comm-stat{text-align:right;}
+.comm-stat-label{font-family:var(--mono);font-size:8px;color:var(--text-dim);letter-spacing:1px;margin-bottom:2px;}
+.comm-stat-value{font-family:var(--mono);font-size:13px;font-weight:700;}
+.expand-btn{font-family:var(--mono);font-size:14px;color:var(--text-dim);text-align:center;transition:transform 0.3s;}
+.expand-btn.open{transform:rotate(180deg);color:var(--green);}
+.badge{font-family:var(--mono);font-size:8px;letter-spacing:1px;padding:2px 8px;border-radius:2px;display:inline-block;}
+.badge-green{background:var(--green-dim);color:var(--green);border:1px solid var(--green);}
+.badge-amber{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber);}
+.badge-blue{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue);}
+.badge-red{background:var(--red-dim);color:var(--red);border:1px solid var(--red);}
+.badge-night{background:rgba(56,232,255,0.1);color:var(--blue);border:1px solid var(--blue);}
+.comm-detail{display:none;border-top:1px solid var(--border);}
+.comm-detail.open{display:block;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);}
+.detail-section{background:var(--surface2);padding:16px 20px;}
+.detail-title{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;}
+.flow-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.flow-label{font-family:var(--mono);font-size:9px;color:var(--text-dim);width:80px;flex-shrink:0;}
+.flow-track{flex:1;height:4px;background:var(--surface3);overflow:hidden;}
+.flow-fill{height:100%;transition:width 1s;}
+.flow-fill.green{background:var(--green);}
+.flow-fill.blue{background:var(--blue);}
+.flow-fill.amber{background:var(--amber);}
+.flow-fill.red{background:var(--red);}
+.flow-val{font-family:var(--mono);font-size:10px;color:var(--text);width:80px;text-align:right;flex-shrink:0;}
+.night-cost-bar{background:var(--blue-dim);border:1px solid var(--blue);padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;}
+.member-mini{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;}
+.member-mini-name{color:var(--text);width:120px;flex-shrink:0;}
+.member-mini-bar{flex:1;height:3px;background:var(--surface3);}
+.member-mini-fill{height:100%;background:var(--green);max-width:100%;}
+.member-mini-val{color:var(--green);width:55px;text-align:right;flex-shrink:0;}
+.debt-section{padding:12px 20px;border-top:1px solid var(--border);}
+.debt-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:5px;}
+.debt-track{height:5px;background:var(--surface3);}
+.debt-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--green-mid));transition:width 1s;box-shadow:0 0 8px var(--green-mid);}
+
+/* ON-CHAIN ACTIONS */
+.onchain-actions{padding:12px 20px;border-top:1px solid var(--border);background:var(--surface);}
+.onchain-title{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--green);margin-bottom:10px;}
+.action-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.action-btn{font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:6px 12px;cursor:pointer;border-radius:2px;border:1px solid;transition:all 0.2s;background:none;}
+.action-btn:hover{filter:brightness(1.3);}
+.action-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.action-btn.settle{border-color:var(--green);color:var(--green);}
+.action-btn.settle:hover{background:var(--green-dim);}
+.action-btn.escrow{border-color:var(--amber);color:var(--amber);}
+.action-btn.escrow:hover{background:var(--amber-dim);}
+.action-btn.carbon{border-color:var(--purple);color:var(--purple);}
+.action-btn.carbon:hover{background:var(--purple-dim);}
+.action-btn.yield{border-color:var(--blue);color:var(--blue);}
+.action-btn.yield:hover{background:var(--blue-dim);}
+.action-btn.member{border-color:var(--text-dim);color:var(--text-dim);}
+.action-btn.member:hover{background:var(--surface2);}
+.action-status{font-family:var(--mono);font-size:9px;margin-top:8px;min-height:16px;transition:all 0.3s;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(7,10,8,0.92);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);padding:28px;max-width:480px;width:100%;margin:20px;position:relative;box-shadow:0 0 40px rgba(45,255,127,0.1);}
+.modal-title{font-family:var(--mono);font-size:12px;letter-spacing:3px;color:var(--green);margin-bottom:20px;text-transform:uppercase;}
+.modal-close{position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:18px;font-family:var(--mono);}
+.modal-field{margin-bottom:14px;}
+.modal-field label{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text-dim);display:block;margin-bottom:5px;text-transform:uppercase;}
+.modal-field input,.modal-field select{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:var(--mono);font-size:12px;outline:none;border-radius:2px;transition:border-color 0.2s;}
+.modal-field input:focus,.modal-field select:focus{border-color:var(--green);}
+.modal-info{font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:1.7;margin-bottom:16px;padding:10px;background:var(--surface2);border:1px solid var(--border);}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+.btn-cancel{background:none;border:1px solid var(--border);color:var(--text-dim);padding:9px 20px;cursor:pointer;font-family:var(--mono);font-size:10px;border-radius:2px;}
+.btn-confirm{background:var(--green);border:none;color:#000;padding:9px 22px;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;border-radius:2px;letter-spacing:1px;}
+.btn-confirm:disabled{background:var(--text-dim);cursor:not-allowed;}
+.modal-result{font-family:var(--mono);font-size:10px;margin-top:14px;padding:10px;border-radius:2px;display:none;}
+.modal-result.ok{background:var(--green-dim);border:1px solid var(--green);color:var(--green);}
+.modal-result.err{background:var(--red-dim);border:1px solid var(--red);color:var(--red);}
+
+/* BOTTOM ROW */
+.bottom-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:24px;}
+.card{background:var(--surface);border:1px solid var(--border);}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.card-title{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);}
+.oracle-price-big{font-family:var(--mono);font-size:44px;font-weight:700;color:var(--blue);text-align:center;padding:18px;line-height:1;text-shadow:0 0 25px var(--blue);transition:all 0.4s;}
+.period-badge{display:block;font-family:var(--mono);font-size:9px;letter-spacing:2px;padding:3px 10px;text-align:center;width:fit-content;margin:0 auto 14px;border-radius:2px;}
+.price-chart{display:flex;align-items:flex-end;gap:2px;height:48px;padding:0 18px 14px;}
+.price-bar-item{flex:1;border-radius:1px;transition:all 0.3s;min-height:3px;}
+.escrow-big{font-family:var(--mono);font-size:36px;font-weight:700;color:var(--amber);text-align:center;padding:18px;line-height:1;text-shadow:0 0 20px var(--amber);transition:all 0.4s;}
+.escrow-rows{padding:0 18px 14px;}
+.escrow-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;padding:6px 0;border-bottom:1px solid var(--border);}
+.escrow-row-label{color:var(--text-dim);letter-spacing:1px;}
+.log-scroll{height:200px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.log-entry{display:flex;gap:10px;padding:5px 18px;font-family:var(--mono);font-size:10px;border-bottom:1px solid rgba(28,43,30,0.4);animation:logIn 0.3s ease;}
+@keyframes logIn{from{background:var(--green-dim)}to{background:transparent}}
+.log-time{color:var(--text-dim);flex-shrink:0;width:55px;}
+.log-type{flex-shrink:0;width:75px;font-weight:700;}
+.log-msg{color:var(--text);}
+
+/* FINANCIALS PAGE */
+.fin-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+.alloc-row{margin-bottom:10px;}
+.alloc-label-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:3px;}
+.alloc-track{height:5px;background:var(--surface3);}
+.alloc-fill{height:100%;transition:width 1s;}
+.fin-table-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:8px;font-family:var(--mono);font-size:10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:center;}
+.fin-table-header{font-size:9px;color:var(--text-dim);letter-spacing:1px;}
+
+/* CARBON PAGE */
+.carbon-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:20px;}
+.carbon-big{font-family:var(--mono);font-size:40px;font-weight:700;text-align:center;padding:22px;line-height:1;transition:all 0.4s;}
+
+/* INSURANCE PAGE */
+.ins-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:20px;}
+.ins-big{font-family:var(--mono);font-size:40px;font-weight:700;text-align:center;padding:22px;line-height:1;transition:all 0.4s;}
+.ins-how{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.ins-how-item{text-align:center;padding:24px 20px;}
+.ins-how-icon{font-size:28px;margin-bottom:10px;}
+.ins-how-title{font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:8px;font-weight:700;}
+.ins-how-desc{font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:1.6;}
+
+/* REGULATORY PAGE */
+.reg-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.reg-law{margin-bottom:16px;}
+.reg-law-name{font-size:13px;font-weight:700;color:var(--green);margin-bottom:6px;}
+.reg-law-desc{font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:1.7;}
+
+/* COMMUNITY CREATOR */
+.creator-wrap{max-width:820px;margin:0 auto;}
+.stepper{display:flex;align-items:center;margin-bottom:36px;}
+.step-item{display:flex;align-items:center;gap:8px;}
+.step-circle{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text-dim);flex-shrink:0;transition:all 0.3s;}
+.step-circle.active{border-color:var(--green);color:var(--green);box-shadow:0 0 10px var(--green-dim);}
+.step-circle.done{background:var(--green);border-color:var(--green);color:#000;}
+.step-label{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--text-dim);white-space:nowrap;}
+.step-label.active{color:var(--green);}
+.step-line{flex:1;height:1px;background:var(--border);margin:0 6px;}
+.step-line.done{background:var(--green);}
+.form-step{display:none;}
+.form-step.active{display:block;}
+.form-title{font-size:20px;font-weight:800;color:var(--green);margin-bottom:6px;}
+.form-sub{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:28px;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field-full{grid-column:1/-1;}
+label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);}
+input,select,textarea{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;font-family:var(--mono);font-size:12px;outline:none;transition:border-color 0.2s;border-radius:2px;-webkit-appearance:none;}
+input:focus,select:focus{border-color:var(--green);}
+select option{background:var(--surface2);}
+.cost-estimate{background:var(--surface2);border:1px solid var(--amber);padding:20px;margin-bottom:20px;}
+.cost-title{font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--amber);margin-bottom:14px;}
+.cost-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+.cost-item{text-align:center;}
+.cost-val{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--amber);margin-bottom:3px;}
+.cost-label{font-family:var(--mono);font-size:8px;color:var(--text-dim);letter-spacing:1px;}
+.cost-breakdown{font-family:var(--mono);font-size:10px;}
+.cost-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);}
+.cost-row-label{color:var(--text-dim);}
+.cost-row-val{color:var(--amber);}
+.members-list{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;}
+.member-input-row{display:flex;gap:7px;align-items:center;}
+.member-input-row input{flex:1;}
+.member-input-row .inv-input{width:110px;flex:none;}
+.remove-btn{background:var(--red-dim);border:1px solid var(--red);color:var(--red);padding:7px 10px;cursor:pointer;font-family:var(--mono);font-size:10px;border-radius:2px;transition:all 0.2s;}
+.remove-btn:hover{background:var(--red);color:#000;}
+.add-member-btn{background:var(--green-dim);border:1px solid var(--green);color:var(--green);padding:9px 18px;cursor:pointer;font-family:var(--mono);font-size:10px;border-radius:2px;letter-spacing:1px;transition:all 0.2s;width:100%;}
+.add-member-btn:hover{background:var(--green);color:#000;}
+.members-summary{padding:10px 14px;background:var(--surface2);border:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:12px;}
+.proj-card{background:var(--surface2);border:1px solid var(--green);padding:20px;margin-bottom:20px;box-shadow:0 0 16px var(--green-dim);}
+.proj-title{font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--green);margin-bottom:16px;}
+.proj-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.proj-item{text-align:center;}
+.proj-val{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--green);margin-bottom:3px;}
+.proj-label{font-family:var(--mono);font-size:8px;color:var(--text-dim);letter-spacing:1px;}
+.monthly-bars{display:flex;align-items:flex-end;gap:2px;height:52px;margin-bottom:6px;}
+.month-bar{flex:1;border-radius:1px 1px 0 0;min-height:3px;transition:all 0.5s;}
+.month-labels-row{display:flex;gap:2px;}
+.month-label{flex:1;font-family:var(--mono);font-size:7px;color:var(--text-dim);text-align:center;}
+.btn-row{display:flex;gap:10px;justify-content:flex-end;}
+.btn-back{background:none;border:1px solid var(--border);color:var(--text-dim);padding:10px 24px;cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:2px;border-radius:2px;transition:all 0.2s;}
+.btn-back:hover{border-color:var(--text);color:var(--text);}
+.btn-next{background:var(--green);border:none;color:#000;padding:10px 28px;cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:2px;font-weight:700;border-radius:2px;transition:all 0.2s;}
+.btn-next:hover{background:var(--green-mid);box-shadow:0 0 16px var(--green-dim);}
+.btn-next:disabled{background:var(--text-dim);cursor:not-allowed;}
+.success-card{text-align:center;padding:50px 36px;border:1px solid var(--green);background:var(--surface);box-shadow:0 0 32px var(--green-dim);}
+.success-icon{font-size:44px;margin-bottom:14px;}
+.success-title{font-size:26px;font-weight:800;color:var(--green);margin-bottom:6px;}
+.success-sub{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:24px;}
+.tx-box{font-family:var(--mono);font-size:10px;color:var(--blue);word-break:break-all;padding:12px;background:var(--surface2);border:1px solid var(--border);margin-bottom:20px;text-align:left;}
+.tx-link{color:var(--blue);text-decoration:none;}
+.tx-link:hover{text-decoration:underline;}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.time-slider-wrap{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9px;color:var(--text-dim);}
+.time-slider-wrap input[type=range]{width:90px;accent-color:var(--green);cursor:pointer;}
+.time-mode-btn{font-family:var(--mono);font-size:9px;padding:3px 8px;border:1px solid var(--border);background:none;color:var(--text-dim);cursor:pointer;border-radius:2px;transition:all 0.2s;}
+.time-mode-btn.live{border-color:var(--green);color:var(--green);}
+.time-mode-btn:hover{border-color:var(--text);color:var(--text);}
+.delete-comm-btn{font-family:var(--mono);font-size:9px;padding:3px 8px;border:1px solid var(--red);background:none;color:var(--red);cursor:pointer;border-radius:2px;transition:all 0.2s;margin-left:8px;}
+.delete-comm-btn:hover{background:var(--red);color:#000;}
+.wallet-btn{font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:6px 14px;cursor:pointer;border-radius:2px;border:1px solid var(--green);background:none;color:var(--green);transition:all 0.2s;white-space:nowrap;}
+.wallet-btn:hover{background:var(--green);color:#000;}
+.wallet-btn.connected{border-color:var(--amber);color:var(--amber);}
+.wallet-btn.connected:hover{background:var(--amber-dim);color:var(--amber);}
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.bottom-row{grid-template-columns:1fr}.carbon-grid3,.ins-grid3,.reg-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.kpi-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}nav{padding:0 14px}.container{padding:16px}.comm-header-row{grid-template-columns:2fr 1fr 1fr 40px}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">⚡ VOLTCORE</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="dashboard" data-i18n="nav_dashboard">Dashboard</button>
+    <button class="nav-tab" data-page="financials" data-i18n="nav_financials">Financials</button>
+    <button class="nav-tab" data-page="escrow" data-i18n="nav_escrow">Escrow</button>
+    <button class="nav-tab" data-page="carbon" data-i18n="nav_carbon">Carbon</button>
+    <button class="nav-tab" data-page="insurance" data-i18n="nav_insurance">Insurance</button>
+    <button class="nav-tab" data-page="regulatory" data-i18n="nav_regulatory">Regulatory</button>
+    <button class="nav-tab" data-page="create" data-i18n="nav_create">+ New Community</button>
+  </div>
+  <div class="nav-right">
+    <div class="lang-toggle">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="es">ES</button>
+    </div>
+    <div class="live-indicator"><div class="live-dot"></div><span id="sim-time-nav" style="font-size:9px;color:var(--text-dim)"></span></div>
+    <div class="time-slider-wrap">
+      <button class="time-mode-btn live" id="time-mode-btn">LIVE</button>
+      <input type="range" id="hour-slider" min="0" max="23" step="1" value="12" style="display:none">
+      <span id="hour-label" style="display:none;color:var(--amber);width:32px">12:00</span>
+    </div>
+    <button class="wallet-btn" id="wallet-btn">Connect Wallet</button>
+  </div>
+</nav>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-settle">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('settle')">✕</button>
+    <div class="modal-title">⚡ Record Settlement</div>
+    <div class="modal-info" id="settle-info">Records an on-chain settlement period with energy production data and distributes revenue allocations.</div>
+    <div class="modal-field"><label>Production (Wh)</label><input type="number" id="settle-production" value="18500" min="0"></div>
+    <div class="modal-field"><label>Self Consumption (Wh)</label><input type="number" id="settle-self" value="12000" min="0"></div>
+    <div class="modal-field"><label>Excess / Grid Export (Wh)</label><input type="number" id="settle-excess" value="6500" min="0"></div>
+    <div class="modal-field"><label>Oracle Price (micro EUR — e.g. 148700 = €0.1487)</label><input type="number" id="settle-price" value="148700" min="0"></div>
+    <div class="modal-field"><label>Period (e.g. 2026-05)</label><input type="text" id="settle-period" value="2026-05"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('settle')">Cancel</button>
+      <button class="btn-confirm" id="settle-confirm" onclick="execSettle()">Send Transaction</button>
+    </div>
+    <div class="modal-result" id="settle-result"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-escrow">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('escrow')">✕</button>
+    <div class="modal-title">🏦 Deposit to Escrow</div>
+    <div class="modal-info" id="escrow-info">Transfers lamports from your wallet to the community PDA escrow vault. These funds earn 5.5% APY and are released proportionally as debt is repaid.</div>
+    <div class="modal-field"><label>Amount (SOL)</label><input type="number" id="escrow-amount" value="0.01" step="0.001" min="0.001"></div>
+    <div class="modal-field"><label>Community</label><select id="escrow-community"></select></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('escrow')">Cancel</button>
+      <button class="btn-confirm" id="escrow-confirm" onclick="execEscrow()">Deposit SOL</button>
+    </div>
+    <div class="modal-result" id="escrow-result"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-carbon">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('carbon')">✕</button>
+    <div class="modal-title">🌿 Mint Carbon Credits</div>
+    <div class="modal-info" id="carbon-info">Mints SPL token carbon credits based on verified energy production. 1 credit = 1 kg CO₂ avoided. EU ETS price €65/tonne.</div>
+    <div class="modal-field"><label>Energy Produced (kWh)</label><input type="number" id="carbon-kwh" value="18.5" step="0.1" min="0"></div>
+    <div class="modal-field"><label>CO₂ Factor (kg/kWh avoided vs grid 180g)</label><input type="number" id="carbon-factor" value="0.18" step="0.01" min="0" max="1" readonly style="opacity:0.7"></div>
+    <div class="modal-field"><label>Credits to Mint (kg CO₂)</label><input type="number" id="carbon-credits" value="3.33" step="0.01" min="0" readonly style="opacity:0.7"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('carbon')">Cancel</button>
+      <button class="btn-confirm" id="carbon-confirm" onclick="execCarbon()">Mint Credits</button>
+    </div>
+    <div class="modal-result" id="carbon-result"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-yield">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('yield')">✕</button>
+    <div class="modal-title">💸 Distribute Yield</div>
+    <div class="modal-info" id="yield-info">Distributes yield per member. Requires record_settlement to fund on-chain treasury first.</div>
+    <div class="modal-field"><label>Amount Per Member (lamports)</label><input type="number" id="yield-amount" value="100000" min="1"></div>
+    <div class="modal-field">
+      <label>Distribute To</label>
+      <select id="yield-member">
+        <option value="all">All Members (batch)</option>
+      </select>
+    </div>
+    <div id="yield-members-preview" style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:8px;padding:8px;background:var(--surface2);border:1px solid var(--border)"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('yield')">Cancel</button>
+      <button class="btn-confirm" id="yield-confirm" onclick="execYield()">Distribute</button>
+    </div>
+    <div class="modal-result" id="yield-result"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-member">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('member')">✕</button>
+    <div class="modal-title">👤 Add Member On-Chain</div>
+    <div class="modal-info" id="member-info">Calls add_member instruction to register a new member PDA with their investment share in the community.</div>
+    <div class="modal-field"><label>Member Wallet Address</label><input type="text" id="member-wallet" placeholder="Solana pubkey..."></div>
+    <div class="modal-field"><label>Investment (lamports)</label><input type="number" id="member-investment" value="3000000000" min="1000000"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('member')">Cancel</button>
+      <button class="btn-confirm" id="member-confirm" onclick="execAddMember()">Add Member</button>
+    </div>
+    <div class="modal-result" id="member-result"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div id="page-dashboard" class="page active">
+<div class="container">
+  <div class="sh"><div class="sh-title" data-i18n="protocol_overview">Protocol Overview</div><div class="sh-line"></div></div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label" data-i18n="kpi_communities">Communities</div><div class="kpi-value green" id="kv-communities">0</div><div class="kpi-unit" data-i18n="active_solana">Active on Solana</div></div>
+    <div class="kpi"><div class="kpi-label" data-i18n="kpi_produced">Energy Produced</div><div class="kpi-value green" id="kv-produced">0.000</div><div class="kpi-unit">kWh</div></div>
+    <div class="kpi"><div class="kpi-label" data-i18n="kpi_grid_cost">Grid Import Cost</div><div class="kpi-value red" id="kv-grid-cost">€0.000</div><div class="kpi-unit" data-i18n="night_hours">Night/deficit hours</div></div>
+    <div class="kpi"><div class="kpi-label" data-i18n="kpi_escrow">Escrow Fund</div><div class="kpi-value amber" id="kv-escrow">€0.00</div><div class="kpi-unit">5.5% APY</div></div>
+    <div class="kpi"><div class="kpi-label" data-i18n="kpi_co2" data-i18n="co2_avoided">CO₂ Avoided</div><div class="kpi-value green" id="kv-co2">0.0</div><div class="kpi-unit">kg</div></div>
+    <div class="kpi"><div class="kpi-label" data-i18n="kpi_debt">Debt Repaid</div><div class="kpi-value blue" id="kv-debt">0.000%</div><div class="kpi-unit" data-i18n="of_infra">Of infrastructure</div></div>
+  </div>
+  <div class="sh"><div class="sh-title" data-i18n="active_communities">Active Communities</div><div class="sh-line"></div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim)" id="comm-count-label">2 communities</div></div>
+  <div class="community-list" id="community-list"></div>
+  <div class="sh"><div class="sh-title" data-i18n="protocol_intel">Protocol Intelligence</div><div class="sh-line"></div></div>
+  <div class="bottom-row">
+    <div class="card">
+      <div class="card-header"><div class="card-title" data-i18n="oracle_title" data-i18n="oracle_title">REE Price Oracle</div><div class="badge badge-blue">CHAINLINK</div></div>
+      <div class="oracle-price-big" id="oracle-price">0.1487</div>
+      <div style="text-align:center;margin-bottom:8px"><div class="period-badge badge-blue" id="oracle-period">FLAT</div></div>
+      <div class="price-chart" id="price-chart"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title" data-i18n="escrow_fund" data-i18n="escrow_fund">Green Escrow Fund</div><div class="badge badge-amber">5.5% APY</div></div>
+      <div class="escrow-big" id="escrow-total">€0.00</div>
+      <div class="escrow-rows">
+        <div class="escrow-row"><span class="escrow-row-label" data-i18n="total_contrib" data-i18n="total_contrib">TOTAL CONTRIBUTED</span><span class="amber" id="e-total-contrib">€0.00</span></div>
+        <div class="escrow-row"><span class="escrow-row-label" data-i18n="yield_earned" data-i18n="yield_earned">YIELD EARNED</span><span class="green" id="e-yield">€0.0000</span></div>
+        <div class="escrow-row"><span class="escrow-row-label" data-i18n="carbon_rev" data-i18n="carbon_rev">CARBON + GOs</span><span class="purple" id="e-carbon">€0.0000</span></div>
+        <div class="escrow-row"><span class="escrow-row-label" data-i18n="insurance_reserve" data-i18n="insurance_reserve">INSURANCE FUND</span><span class="blue" id="e-ins">€0.00</span></div>
+        <div class="escrow-row"><span class="escrow-row-label" data-i18n="grid_cost_total" data-i18n="grid_cost_total">GRID IMPORT COST</span><span class="red" id="e-grid-cost">€0.00</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title" data-i18n="settlement_log" data-i18n="settlement_log">Settlement Log</div><div class="live-indicator"><div class="live-dot"></div></div></div>
+      <div class="log-scroll" id="log-body"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ESCROW PAGE -->
+<div id="page-escrow" class="page">
+<div class="container">
+  <div class="sh"><div class="sh-title" data-i18n="escrow_page_title">Escrow Fund — Detail</div><div class="sh-line"></div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:24px">
+    <div class="kpi"><div class="kpi-label" data-i18n="total_escrow_balance">Total Escrow Balance</div><div class="kpi-value amber" id="escrow-page-total">€0.00</div><div class="kpi-unit">5.5% APY</div></div>
+    <div class="kpi"><div class="kpi-label" data-i18n="escrow_from_solar">From Solar Revenue</div><div class="kpi-value green" id="escrow-page-solar">€0.00</div><div class="kpi-unit" data-i18n="15pct_revenue">15% of revenue</div></div>
+    <div class="kpi"><div class="kpi-label" data-i18n="escrow_from_carbon">From Carbon Sales</div><div class="kpi-value purple" id="escrow-page-carbon">€0.00</div><div class="kpi-unit" data-i18n="credit_buybacks">Credit buybacks</div></div>
+    <div class="kpi"><div class="kpi-label" data-i18n="escrow_from_deposits">Direct Deposits</div><div class="kpi-value blue" id="escrow-page-deposits">€0.00</div><div class="kpi-unit" data-i18n="sol_transfers">SOL transfers</div></div>
+  </div>
+  <div class="sh"><div class="sh-title" data-i18n="escrow_by_community">By Community</div><div class="sh-line"></div></div>
+  <div id="escrow-community-breakdown" style="margin-bottom:24px"></div>
+  <div class="sh"><div class="sh-title" data-i18n="escrow_transactions">Transaction Log</div><div class="sh-line"></div></div>
+  <div class="card">
+    <div style="padding:18px" id="escrow-tx-log">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center;padding:20px" data-i18n="no_escrow_txs">No escrow transactions yet.</div>
+    </div>
+  </div>
+  <div style="margin-top:20px;padding:16px;background:var(--surface2);border:1px solid var(--amber);font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:1.8">
+    <div style="color:var(--amber);letter-spacing:2px;margin-bottom:8px" data-i18n="escrow_how_title">HOW ESCROW WORKS</div>
+    <div data-i18n="escrow_how_text">15% of all solar revenue is auto-allocated to the community escrow fund. Carbon credit sales are added directly. SOL deposits earn 5.5% APY. Funds are released proportionally as community debt is repaid. Members can withdraw their share once debt is cleared.</div>
+  </div>
+</div>
+</div>
+
+<!-- FINANCIALS PAGE -->
+<div id="page-financials" class="page">
+<div class="container">
+  <div class="sh"><div class="sh-title" data-i18n="financial_transparency">Financial Transparency</div><div class="sh-line"></div></div>
+  <div class="fin-grid">
+    <div class="card"><div class="card-header"><div class="card-title" data-i18n="rev_alloc">Revenue Allocation</div></div><div style="padding:18px" id="alloc-bars"></div></div>
+    <div class="card"><div class="card-header"><div class="card-title" data-i18n="daily_cost">Daily Cost Breakdown</div></div><div style="padding:18px" id="cost-breakdown-panel"></div></div>
+  </div>
+  <div class="card" style="margin-bottom:20px"><div class="card-header"><div class="card-title" data-i18n="member_trans">Member Transparency — All Communities</div></div><div style="padding:18px" id="member-fin-table"></div></div>
+  <div class="card"><div class="card-header"><div class="card-title" data-i18n="escrow_proj">Escrow Fund — 5 Year Projection</div></div><div style="padding:18px" id="escrow-proj"></div></div>
+</div>
+</div>
+
+<!-- CARBON PAGE -->
+<div id="page-carbon" class="page">
+<div class="container">
+  <div class="sh"><div class="sh-title">Carbon & Environmental Impact</div><div class="sh-line"></div></div>
+  <div class="carbon-grid3">
+    <div class="card"><div class="card-header"><div class="card-title" data-i18n="co2_avoided">CO₂ Avoided</div><div class="badge badge-green">kg</div></div><div class="carbon-big green" id="c-co2">0.0</div><div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--text-dim);padding-bottom:14px" data-i18n="vs_grid">vs Spanish grid average 180g/kWh</div></div>
+    <div class="card"><div class="card-header"><div class="card-title" data-i18n="carbon_credits">Carbon Credits</div><div class="badge badge-green">EU ETS €65/t</div></div><div class="carbon-big purple" id="c-credits">€0.00</div><div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--text-dim);padding-bottom:14px" data-i18n="ets_price">EU Emission Trading System</div></div>
+    <div class="card"><div class="card-header"><div class="card-title" data-i18n="go_certs">Guarantees of Origin</div><div class="badge badge-blue">GO €2.50/MWh</div></div><div class="carbon-big blue" id="c-go">€0.00</div><div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--text-dim);padding-bottom:14px" data-i18n="go_directive">EU Directive 2009/28/EC</div></div>
+  </div>
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <div class="card-title">🌿 Minted Carbon Credits — On-Chain Registry</div>
+      <div class="badge badge-green" id="total-credits-badge">0 credits</div>
+    </div>
+    <div style="padding:18px" id="carbon-credits-list">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center;padding:20px">
+        No carbon credits minted yet. Use "🌿 Mint Carbon Credits" on any community to record credits on-chain.
+      </div>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim)">Credits verified via Solana Memo Program · EU ETS compatible · GO Directive 2009/28/EC</div>
+      <button onclick="openCarbonMarketplace()" style="background:var(--purple);border:none;color:#fff;padding:8px 18px;cursor:pointer;font-family:var(--mono);font-size:9px;font-weight:700;border-radius:2px;letter-spacing:1px">🛒 OPEN MARKETPLACE →</button>
+    </div>
+  </div>
+  <div class="card"><div class="card-header"><div class="card-title" data-i18n="carbon_reg">Carbon Regulatory Framework</div></div><div style="padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:24px"><div><div style="color:var(--green);font-family:var(--mono);font-size:10px;letter-spacing:2px;margin-bottom:12px">🇪🇸 SPAIN</div><div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:2">RD 244/2019 — Self-consumption collective<br>RD 23/2020 — Storage regulation<br>CNMC quarterly reporting<br>REE — Grid connection standards</div></div><div><div style="color:var(--blue);font-family:var(--mono);font-size:10px;letter-spacing:2px;margin-bottom:12px">🇪🇺 EU</div><div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);line-height:2">RED II (2018/2001) — Renewable Energy<br>EU ETS — Carbon trading scheme<br>GO Directive — Guarantees of Origin<br>Nature Restoration Law 2024</div></div></div></div>
+</div>
+</div>
+
+<!-- INSURANCE PAGE -->
+<div id="page-insurance" class="page">
+<div class="container">
+  <div class="sh"><div class="sh-title" data-i18n="parametric_insurance">Parametric Insurance</div><div class="sh-line"></div></div>
+  <div class="ins-grid3">
+    <div class="card"><div class="card-header"><div class="card-title" data-i18n="fund_balance">Fund Balance</div></div><div class="ins-big blue" id="ins-balance">€0.00</div></div>
+    <div class="card"><div class="card-header"><div class="card-title" data-i18n="premiums_collected">Premiums Collected</div></div><div class="ins-big green" id="ins-premiums">€0.00</div></div>
+    <div class="card"><div class="card-header"><div class="card-title" data-i18n="payouts_made">Payouts Made</div></div><div class="ins-big amber" id="ins-payouts">€0.00</div></div>
+  </div>
+  <div class="card"><div class="card-header"><div class="card-title" data-i18n="how_parametric">How Parametric Insurance Works</div></div><div class="ins-how" style="padding:20px"><div class="ins-how-item"><div class="ins-how-icon">📊</div><div class="ins-how-title green" data-i18n="trigger_cond">TRIGGER CONDITION</div><div class="ins-how-desc" data-i18n="trigger_desc">Production falls below 70% of expected monthly average. Oracle verifies automatically. No human assessment needed.</div></div><div class="ins-how-item"><div class="ins-how-icon">⚡</div><div class="ins-how-title blue" data-i18n="auto_payout">AUTOMATIC PAYOUT</div><div class="ins-how-desc" data-i18n="auto_desc">Smart contract reads oracle data and pays immediately. No claims process, no waiting, no paperwork.</div></div><div class="ins-how-item"><div class="ins-how-icon">🌿</div><div class="ins-how-title amber" data-i18n="premium_model">PREMIUM MODEL</div><div class="ins-how-desc" data-i18n="premium_desc">2% of daily revenue auto-funded. Insurance pool is self-sustaining and community-owned.</div></div></div></div>
+</div>
+</div>
+
+<!-- REGULATORY PAGE -->
+<div id="page-regulatory" class="page">
+<div class="container">
+  <div class="sh"><div class="sh-title" data-i18n="regulatory_compliance">Regulatory Compliance</div><div class="sh-line"></div></div>
+  <div class="reg-grid">
+    <div class="card"><div class="card-header"><div class="card-title">🇪🇸 Spain Legal Framework</div><div class="badge badge-green">COMPLIANT</div></div><div style="padding:18px"><div class="reg-law"><div class="reg-law-name">Real Decreto 244/2019</div><div class="reg-law-desc">Regulates collective self-consumption. VOLTCORE implements democratic governance, transparent settlement, and CNMC reporting automatically via smart contracts.</div></div><div class="reg-law"><div class="reg-law-name">Real Decreto 23/2020</div><div class="reg-law-desc">Energy storage regulation. Off-grid communities comply via IoT integration with safety and metering requirements.</div></div><div class="reg-law"><div class="reg-law-name">CNMC Reporting</div><div class="reg-law-desc">Quarterly production and settlement reports auto-generated from on-chain settlement data. Tamper-proof and auditable.</div></div></div></div>
+    <div class="card"><div class="card-header"><div class="card-title">🇪🇺 EU Legal Framework</div><div class="badge badge-blue">COMPLIANT</div></div><div style="padding:18px"><div class="reg-law"><div class="reg-law-name">RED II (2018/2001)</div><div class="reg-law-desc">Renewable Energy Communities Directive. VOLTCORE provides governance infrastructure RED II mandates — member voting, transparent accounts, democratic control.</div></div><div class="reg-law"><div class="reg-law-name">EU ETS Carbon Market</div><div class="reg-law-desc">Verified renewable generation tracked on-chain. CO₂ avoided calculated per settlement. Carbon credit documentation prepared automatically.</div></div><div class="reg-law"><div class="reg-law-name" data-i18n="go_certs">Guarantees of Origin</div><div class="reg-law-desc">Every MWh of community solar generates a tradeable GO certificate. Minted as on-chain verifiable credentials via Solana.</div></div></div></div>
+  </div>
+</div>
+</div>
+
+<!-- CREATE COMMUNITY PAGE -->
+<div id="page-create" class="page">
+<div class="container">
+  <div class="sh"><div class="sh-title" data-i18n="create_community">Create New Community</div><div class="sh-line"></div></div>
+  <div class="creator-wrap">
+    <div class="stepper">
+      <div class="step-item"><div class="step-circle active" id="sc-1">1</div><div class="step-label active" data-i18n="step_basics">Basics</div></div>
+      <div class="step-line" id="sl-1"></div>
+      <div class="step-item"><div class="step-circle" id="sc-2">2</div><div class="step-label" data-i18n="step_solar">Solar</div></div>
+      <div class="step-line" id="sl-2"></div>
+      <div class="step-item"><div class="step-circle" id="sc-3">3</div><div class="step-label" data-i18n="step_costs">Costs</div></div>
+      <div class="step-line" id="sl-3"></div>
+      <div class="step-item"><div class="step-circle" id="sc-4">4</div><div class="step-label" data-i18n="step_members">Members</div></div>
+      <div class="step-line" id="sl-4"></div>
+      <div class="step-item"><div class="step-circle" id="sc-5">5</div><div class="step-label" data-i18n="step_proj">Projection</div></div>
+      <div class="step-line" id="sl-5"></div>
+      <div class="step-item"><div class="step-circle" id="sc-6">6</div><div class="step-label" data-i18n="step_deploy">Deploy</div></div>
+    </div>
+
+    <div class="form-step active" id="fs-1">
+      <div class="form-title" data-i18n="s1_title">Community Basics</div>
+      <div class="form-sub" data-i18n="s1_sub">Name your community and choose its energy model</div>
+      <div class="form-grid">
+        <div class="field field-full"><label data-i18n="community_name">Community Name</label><input type="text" id="f-name" placeholder="e.g. Valencia Solar Cooperative"/></div>
+        <div class="field"><label data-i18n="energy_type">Energy Type</label><select id="f-type" onchange="onTypeChange()"><option value="ON_GRID">On-Grid (connected to national grid)</option><option value="OFF_GRID">Off-Grid (autonomous + battery)</option></select></div>
+        <div class="field"><label data-i18n="location">Location in Spain</label><select id="f-location" onchange="updateAllEstimates()"><option value="barcelona">Barcelona</option><option value="madrid">Madrid</option><option value="sevilla">Sevilla</option><option value="extremadura">Extremadura</option><option value="bilbao">Bilbao</option><option value="valencia">Valencia</option></select></div>
+        <div class="field"><label data-i18n="n_households">Number of Households</label><input type="number" id="f-households" value="10" min="2" max="100" oninput="updateAllEstimates()"/></div>
+        <div class="field"><label data-i18n="ref_price">Grid Reference Price (€/kWh)</label><input type="number" id="f-refprice" value="0.22" step="0.01" min="0.05" max="0.60"/></div>
+        <div class="field" id="f-battery-field" style="display:none"><label data-i18n="battery_kwh">Battery Capacity (kWh)</label><input type="number" id="f-battery" value="48" step="8" min="8" max="1000" oninput="updateAllEstimates()"/></div>
+      </div>
+      <div class="btn-row"><button class="btn-next" onclick="goStep(2)">Next →</button></div>
+    </div>
+
+    <div class="form-step" id="fs-2">
+      <div class="form-title" data-i18n="s2_title">Solar Installation</div>
+      <div class="form-sub">Configure panels — production estimated via PVGIS satellite data</div>
+      <div class="form-grid form-grid-3">
+        <div class="field"><label data-i18n="panel_count">Number of Panels</label><input type="number" id="f-panels" value="48" min="4" max="1000" oninput="updateAllEstimates()"/></div>
+        <div class="field"><label data-i18n="panel_wp">Panel Power (Wp)</label><select id="f-panel-wp" onchange="updateAllEstimates()"><option value="300">300 Wp</option><option value="400" selected>400 Wp</option><option value="500">500 Wp</option><option value="600">600 Wp</option></select></div>
+        <div class="field"><label data-i18n="orientation">Orientation</label><select id="f-orient" onchange="updateAllEstimates()"><option value="south">South (optimal)</option><option value="southeast">South-East</option><option value="southwest">South-West</option><option value="east">East</option><option value="west">West</option></select></div>
+        <div class="field"><label data-i18n="tilt">Tilt (°)</label><input type="number" id="f-tilt" value="30" min="0" max="60" oninput="updateAllEstimates()"/></div>
+        <div class="field"><label data-i18n="install_year">Installation Year</label><input type="number" id="f-year" value="2025" min="2024" max="2030"/></div>
+        <div class="field"><label data-i18n="degradation">Panel Degradation (%/yr)</label><input type="number" id="f-degrad" value="0.5" step="0.1" min="0" max="2"/></div>
+      </div>
+      <div class="proj-card" id="solar-preview">
+        <div class="proj-title">⚡ PVGIS PRODUCTION ESTIMATE</div>
+        <div class="proj-grid">
+          <div class="proj-item"><div class="proj-val" id="pv-kwp">0</div><div class="proj-label">kWp System</div></div>
+          <div class="proj-item"><div class="proj-val" id="pv-annual">0</div><div class="proj-label">Annual kWh</div></div>
+          <div class="proj-item"><div class="proj-val" id="pv-monthly">0</div><div class="proj-label">Avg Monthly kWh</div></div>
+          <div class="proj-item"><div class="proj-val" id="pv-daily">0</div><div class="proj-label">Avg Daily kWh</div></div>
+        </div>
+        <div class="monthly-bars" id="pv-monthly-bars"></div>
+        <div class="month-labels-row"><div class="month-label">J</div><div class="month-label">F</div><div class="month-label">M</div><div class="month-label">A</div><div class="month-label">M</div><div class="month-label">J</div><div class="month-label">J</div><div class="month-label">A</div><div class="month-label">S</div><div class="month-label">O</div><div class="month-label">N</div><div class="month-label">D</div></div>
+      </div>
+      <div class="btn-row"><button class="btn-back" onclick="goStep(1)">← Back</button><button class="btn-next" onclick="goStep(3)">Next →</button></div>
+    </div>
+
+    <div class="form-step" id="fs-3">
+      <div class="form-title" data-i18n="s3_title">Cost Estimation</div>
+      <div class="form-sub">Full infrastructure cost including installation, maintenance, and financing</div>
+      <div class="form-grid">
+        <div class="field"><label data-i18n="panel_cost">Panel Cost (€/Wp)</label><input type="number" id="f-panel-cost" value="0.35" step="0.05" min="0.1" max="1.0" oninput="updateAllEstimates()"/></div>
+        <div class="field"><label data-i18n="install_cost">Installation Cost (€/kWp)</label><input type="number" id="f-install-cost" value="200" step="50" min="50" max="1000" oninput="updateAllEstimates()"/></div>
+        <div class="field" id="f-battery-cost-field" style="display:none"><label data-i18n="battery_cost">Battery Cost (€/kWh)</label><input type="number" id="f-battery-cost" value="400" step="50" min="100" max="1000" oninput="updateAllEstimates()"/></div>
+        <div class="field"><label data-i18n="maintenance">Annual Maintenance (%)</label><input type="number" id="f-maintenance" value="1.5" step="0.1" min="0" max="5" oninput="updateAllEstimates()"/></div>
+        <div class="field"><label data-i18n="bank_interest">Bank Loan Interest (%/yr)</label><input type="number" id="f-interest" value="4.5" step="0.1" min="0" max="20" oninput="updateAllEstimates()"/></div>
+        <div class="field"><label data-i18n="loan_years">Loan Duration (years)</label><input type="number" id="f-loan-years" value="10" min="1" max="30" oninput="updateAllEstimates()"/></div>
+      </div>
+      <div class="cost-estimate" id="cost-estimate-box">
+        <div class="cost-title">FULL COST ESTIMATE</div>
+        <div class="cost-grid">
+          <div class="cost-item"><div class="cost-val" id="ce-panels">€0</div><div class="cost-label">Panels</div></div>
+          <div class="cost-item"><div class="cost-val" id="ce-battery">€0</div><div class="cost-label">Battery</div></div>
+          <div class="cost-item"><div class="cost-val" id="ce-install">€0</div><div class="cost-label">Installation</div></div>
+          <div class="cost-item"><div class="cost-val" id="ce-total">€0</div><div class="cost-label">Total Investment</div></div>
+        </div>
+        <div class="cost-breakdown" id="cost-breakdown-detail"></div>
+      </div>
+      <div class="btn-row"><button class="btn-back" onclick="goStep(2)">← Back</button><button class="btn-next" onclick="goStep(4)">Next →</button></div>
+    </div>
+
+    <div class="form-step" id="fs-4">
+      <div class="form-title" data-i18n="s4_title">Community Members</div>
+      <div class="form-sub">Add members and investment amounts.</div>
+      <div class="members-list" id="members-list" style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+      </div>
+      <script>
+      // Init default members with wallets on load
+      (function(){
+        var list=document.getElementById('members-list');
+        if(!list||list.children.length>0) return;
+        var defaults=[['Ana García','3000'],['Marc Puig','3000']];
+        var chars='ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz123456789';
+        defaults.forEach(function(d){
+          var wallet=Array.from({length:44},function(){return chars[Math.floor(Math.random()*chars.length)]}).join('');
+          var div=document.createElement('div');
+          div.className='member-input-row';div.style.cssText='flex-wrap:wrap;gap:6px;';
+          div.innerHTML='<input type="text" placeholder="Member name" class="m-name" value="'+d[0]+'" style="flex:1;min-width:120px"/>'+
+            '<input type="number" class="inv-input m-inv" value="'+d[1]+'" min="100" oninput="updateMembersTotal()" style="width:90px;flex:none"/>'+
+            '<input type="text" class="m-wallet" value="'+wallet+'" style="flex:2;min-width:200px;font-size:10px"/>'+
+            '<button onclick="regenWallet(this)" style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);padding:7px 8px;cursor:pointer;font-family:var(--mono);font-size:9px;border-radius:2px">↻</button>'+
+            '<button class="remove-btn" onclick="removeMember(this)">✕</button>';
+          list.appendChild(div);
+        });
+      })();
+      </script>
+      <button class="add-member-btn" onclick="addMember()">+ Add Member</button>
+      <div class="members-summary" id="members-summary">Total: €0 from 2 members</div>
+      <div class="btn-row" style="margin-top:18px"><button class="btn-back" onclick="goStep(3)">← Back</button><button class="btn-next" onclick="goStep(5)">Next →</button></div>
+    </div>
+
+    <div class="form-step" id="fs-5">
+      <div class="form-title" data-i18n="s5_title">Financial Projection</div>
+      <div class="form-sub">Complete 20-year financial model for your community</div>
+      <div id="full-projection-content"></div>
+      <div class="btn-row"><button class="btn-back" onclick="goStep(4)">← Back</button><button class="btn-next" onclick="goStep(6)" id="deploy-btn">⚡ Deploy to Solana</button></div>
+    </div>
+
+    <div class="form-step" id="fs-6">
+      <div id="deploy-status">
+        <div class="success-card" id="deploying-card">
+          <div class="success-icon">⏳</div>
+          <div class="success-title" style="color:var(--amber)">Deploying to Solana...</div>
+          <div class="success-sub">Sending transaction to Solana devnet</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:16px" id="deploy-progress">Initializing...</div>
+        </div>
+        <div class="success-card" id="deployed-card" style="display:none">
+          <div class="success-icon">⚡</div>
+          <div class="success-title">Community Deployed!</div>
+          <div class="success-sub">Your energy community is now live on Solana devnet</div>
+          <div class="tx-box" id="deploy-tx-box"></div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:20px;line-height:2" id="deploy-details"></div>
+          <button class="btn-next" onclick="onDeployComplete()">View Dashboard →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ─────────────────────────────────────────────
+// CLOCK — REAL TIME, updates every second
+// ─────────────────────────────────────────────
+let simFrozen = false;
+let frozenTime = null; // only set in SIM mode
+
+function getSimTime() {
+  // In LIVE mode always return actual Date.now()
+  // In SIM mode return frozenTime
+  return simFrozen ? frozenTime : new Date();
+}
+
+function formatTime(dt) {
+  return dt.toLocaleDateString('en-GB') + ' ' +
+    dt.getHours().toString().padStart(2,'0') + ':' +
+    dt.getMinutes().toString().padStart(2,'0') + ':' +
+    dt.getSeconds().toString().padStart(2,'0');
+}
+
+// Update clock display every second independently of physics tick
+setInterval(() => {
+  const el = document.getElementById('sim-time-nav');
+  if (el) el.textContent = formatTime(getSimTime());
+}, 1000);
+
+// ─────────────────────────────────────────────
+// PAGE NAVIGATION
+// ─────────────────────────────────────────────
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  const pageEl = document.getElementById('page-'+p);
+  if(pageEl) pageEl.classList.add('active');
+  const idx = {dashboard:0,financials:1,escrow:2,carbon:3,insurance:4,regulatory:5,create:6};
+  document.querySelectorAll('.nav-tab')[idx[p]]?.classList.add('active');
+  if(p==='financials') renderFinancials();
+  if(p==='escrow') renderEscrowPage();
+  applyLang();
+}
+
+// ─────────────────────────────────────────────
+// SOLAR PHYSICS
+// ─────────────────────────────────────────────
+const PSH = {
+  barcelona:[3.2,4.1,5.3,6.2,7.1,7.8,7.9,7.2,6.0,4.8,3.5,3.0],
+  madrid:[3.5,4.4,5.7,6.6,7.5,8.2,8.5,7.8,6.4,5.1,3.7,3.2],
+  sevilla:[4.0,5.0,6.3,7.3,8.3,9.0,9.3,8.6,7.1,5.7,4.2,3.7],
+  extremadura:[3.8,4.7,6.0,7.0,8.0,8.7,9.0,8.3,6.8,5.4,4.0,3.5],
+  bilbao:[2.2,3.0,4.2,5.2,6.0,6.8,7.0,6.3,5.0,3.8,2.6,2.0],
+  valencia:[3.6,4.5,5.8,6.7,7.6,8.3,8.6,7.9,6.5,5.2,3.8,3.3]
+};
+const LAT_LNG = {barcelona:[41.38,2.17],madrid:[40.42,-3.70],sevilla:[37.39,-5.99],extremadura:[39.47,-6.37],bilbao:[43.26,-2.93],valencia:[39.47,-0.38]};
+const ORIENT_F = {south:1.0,southeast:0.95,southwest:0.95,east:0.8,west:0.8};
+const CLOUD_PROB = {
+  barcelona:[0.45,0.40,0.38,0.35,0.30,0.20,0.15,0.18,0.28,0.38,0.42,0.46],
+  extremadura:[0.35,0.30,0.28,0.25,0.20,0.10,0.05,0.08,0.18,0.28,0.32,0.36],
+  madrid:[0.40,0.35,0.32,0.30,0.25,0.15,0.08,0.10,0.22,0.32,0.38,0.42],
+  sevilla:[0.30,0.28,0.25,0.22,0.18,0.08,0.03,0.05,0.15,0.25,0.28,0.32],
+  bilbao:[0.60,0.55,0.50,0.48,0.45,0.38,0.32,0.35,0.45,0.55,0.60,0.62],
+  valencia:[0.38,0.33,0.30,0.28,0.22,0.14,0.08,0.10,0.22,0.32,0.38,0.42]
+};
+
+function getSunriseSunset(lat,lng,doy) {
+  const decl=23.45*Math.sin(Math.PI/180*360/365*(doy-81));
+  const cosHA=-Math.tan(lat*Math.PI/180)*Math.tan(decl*Math.PI/180);
+  const ha=Math.acos(Math.max(-1,Math.min(1,cosHA)))*180/Math.PI;
+  const noon=12-lng/15+1;
+  return[noon-ha/15,noon+ha/15];
+}
+
+function getSolarElevation(lat,lng,doy,hour) {
+  const decl=Math.PI/180*23.45*Math.sin(Math.PI/180*360/365*(doy-81));
+  const noon=12-lng/15+1;
+  const ha=Math.PI/180*15*(hour-noon);
+  const latR=lat*Math.PI/180;
+  return Math.asin(Math.sin(latR)*Math.sin(decl)+Math.cos(latR)*Math.cos(decl)*Math.cos(ha))*180/Math.PI;
+}
+
+function estimatePVGIS(loc,panels,wp,tilt,orient) {
+  const psh=PSH[loc]||PSH.barcelona;
+  const kwp=panels*wp/1000;
+  const eff=0.82*(ORIENT_F[orient]||1.0);
+  const days=[31,28,31,30,31,30,31,31,30,31,30,31];
+  const monthly=psh.map((h,i)=>Math.round(kwp*h*eff*days[i]));
+  return{monthly,annual:monthly.reduce((a,b)=>a+b,0),kwp:Math.round(kwp*10)/10};
+}
+
+// ─────────────────────────────────────────────
+// SIMULATION STATE
+// ─────────────────────────────────────────────
+const GRID_PRICE_NIGHT = 0.28;
+
+let communities = [];
+
+let tickCount = 0;
+let priceHistory = [];
+let cloudState = {};
+let globalOracle = 0.1487;
+let globalEscrowYield = 0;
+let globalCarbonRev = 0;
+let globalInsBalance = 0;
+let globalInsPremiums = 0;
+let globalInsPayouts = 0;
+let globalGridCost = 0;
+let lastTickTime = Date.now();
+
+function updateCloud(loc,month) {
+  if(!cloudState[loc]) cloudState[loc]={factor:1,duration:0};
+  const cs=cloudState[loc];
+  const prob=(CLOUD_PROB[loc]||CLOUD_PROB.barcelona)[month];
+  if(cs.duration>0){cs.duration--;}
+  else if(Math.random()<prob/8){cs.factor=0.2+Math.random()*0.5;cs.duration=2+Math.floor(Math.random()*8);}
+  else{cs.factor=0.88+Math.random()*0.14;}
+  return cs.factor;
+}
+
+function getProduction(c,dt) {
+  const[lat,lng]=LAT_LNG[c.location]||LAT_LNG.barcelona;
+  const doy=Math.floor((dt-new Date(dt.getFullYear(),0,0))/86400000);
+  const hour=dt.getHours()+dt.getMinutes()/60;
+  const elev=getSolarElevation(lat,lng,doy,hour);
+  const[sr,ss]=getSunriseSunset(lat,lng,doy);
+  if(elev<=0) return{kwh:0,elev,sr,ss,cloud:1,isNight:true};
+  const month=dt.getMonth();
+  const psh=(PSH[c.location]||PSH.barcelona)[month];
+  const kwp=c.panels*c.panelWp/1000;
+  const irr=Math.sin(elev*Math.PI/180);
+  const cloud=updateCloud(c.location,month);
+  const kwh=kwp*(psh/8)*irr*cloud*0.82*0.25*(0.96+Math.random()*0.08);
+  return{kwh:Math.max(0,kwh),elev,sr,ss,cloud,isNight:false};
+}
+
+function getConsumption(c,dt) {
+  const HW=[0.28,0.24,0.21,0.19,0.19,0.21,0.32,0.62,0.78,0.72,0.68,0.70,0.82,0.88,0.83,0.68,0.66,0.73,0.93,1.00,1.00,0.93,0.78,0.52];
+  const SEA=[1.15,1.10,1.00,0.95,0.92,1.05,1.20,1.18,0.98,1.00,1.08,1.15];
+  const h=dt.getHours(),m=dt.getMonth();
+  const base=300*c.households/30/24*SEA[m]*HW[h]/4;
+  let spike=0;
+  if([6,7,8].includes(h)&&Math.random()<0.12) spike+=Math.random()*0.5*c.households/5;
+  if([13,14].includes(h)&&Math.random()<0.20) spike+=Math.random()*0.8*c.households/5;
+  if([19,20,21].includes(h)&&Math.random()<0.25) spike+=Math.random()*0.6*c.households/5;
+  if([5,6,7,8].includes(m)&&14<=h&&h<=22&&Math.random()<0.40) spike+=Math.random()*1.2*c.households/5;
+  if([11,0,1].includes(m)&&(h<=8||h>=18)&&Math.random()<0.35) spike+=Math.random()*1.0*c.households/5;
+  return Math.max(0.05*c.households,(base+spike)*(0.9+Math.random()*0.2));
+}
+
+function getOracle(dt) {
+  const h=dt.getHours(),m=dt.getMonth();
+  let p=0.1487;
+  if(h>=9&&h<22) p*=1.12; else if(h<8) p*=0.85;
+  if([11,0,1].includes(m)) p*=1.10; else if([2,3,4].includes(m)) p*=0.92;
+  if([5,6,7].includes(m)) p*=1.08;
+  return Math.max(0.05,p*(0.96+Math.random()*0.08));
+}
+
+// Physics tick — every 3s, uses REAL current time (or frozen in SIM)
+function tick() {
+  tickCount++;
+  const dt = getSimTime();
+  globalOracle = getOracle(dt);
+  priceHistory.push(globalOracle);
+  if(priceHistory.length>24) priceHistory.shift();
+
+  communities.forEach(c => {
+    const prod = getProduction(c,dt);
+    const cons = getConsumption(c,dt);
+    const self = Math.min(prod.kwh,cons);
+    const excess = Math.max(0,prod.kwh-cons);
+    const deficit = Math.max(0,cons-prod.kwh);
+
+    c.prod=prod.kwh; c.self=self; c.excess=excess;
+    c.elevation=prod.elev; c.sunrise=prod.sr; c.sunset=prod.ss; c.cloudFactor=prod.cloud;
+
+    let gridCost=0;
+    if(c.type==='ON_GRID') {
+      c.gridImport=deficit;
+      gridCost=deficit*GRID_PRICE_NIGHT;
+      c.gridImportCost+=gridCost;
+      globalGridCost+=gridCost;
+    } else {
+      if(prod.kwh>cons) {
+        c.batSoc=Math.min(95,c.batSoc+(excess/c.battery)*100*0.97);
+      } else {
+        const batSupply=Math.min(deficit,(c.batSoc-10)/100*c.battery*0.97);
+        c.batSoc=Math.max(10,c.batSoc-(batSupply/c.battery)*100);
+      }
+      c.gridImport=0;
+    }
+
+    const savings=self*c.refPrice;
+    const excessRev=c.type==='ON_GRID'?excess*globalOracle:0;
+    const grossRev=savings+excessRev;
+    const netRev=Math.max(0,grossRev-gridCost);
+
+    const debtPay=netRev*0.55;
+    const escrowContr=netRev*0.15;
+    const insP=netRev*0.02;
+    const yld=c.escrow*0.055/365/96;
+    const co2=prod.kwh*0.18;
+
+    c.totalDebt=Math.max(0,c.totalDebt-debtPay);
+    c.totalRepaid+=debtPay;
+    c.escrow+=escrowContr+yld;
+    c.co2+=co2;
+
+    globalEscrowYield+=yld;
+    globalCarbonRev+=(co2/1000*65)+(prod.kwh/1000*2.5);
+    globalInsBalance+=insP;
+    globalInsPremiums+=insP;
+  });
+
+  updateUI();
+  if(tickCount%20===0) saveCommunities(); // auto-save every ~60s
+}
+
+// ─────────────────────────────────────────────
+// UI
+// ─────────────────────────────────────────────
+function f(n,d=2){return(+n).toLocaleString('en',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function set(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
+function hToTime(h){const hh=Math.floor(h);const mm=Math.round((h-hh)*60);return`${hh.toString().padStart(2,'0')}:${mm.toString().padStart(2,'0')}`;}
+
+function updateUI() {
+  const totalProd=communities.reduce((a,c)=>a+c.prod,0);
+  const totalGridCost=communities.reduce((a,c)=>a+c.gridImportCost,0);
+  const totalEscrow=communities.reduce((a,c)=>a+c.escrow,0);
+  const totalCO2=communities.reduce((a,c)=>a+c.co2,0);
+  const totalDebt=communities.reduce((a,c)=>a+c.totalInvestment,0);
+  const totalRepaid=communities.reduce((a,c)=>a+c.totalRepaid,0);
+
+  set('kv-communities',communities.length);
+  set('kv-produced',f(totalProd,4));
+  set('kv-grid-cost','€'+f(totalGridCost,3));
+  set('kv-escrow','€'+f(totalEscrow));
+  set('kv-co2',f(totalCO2,1));
+  set('kv-debt',totalDebt>0?f(totalRepaid/totalDebt*100,3)+'%':'0.000%');
+  set('e-total-contrib','€'+f(totalEscrow));
+  set('e-yield','€'+f(globalEscrowYield,4));
+  set('e-carbon','€'+f(globalCarbonRev,4));
+  set('e-ins','€'+f(globalInsBalance,2));
+  set('e-grid-cost','€'+f(totalGridCost,3));
+  set('escrow-total','€'+f(totalEscrow));
+
+  set('oracle-price',globalOracle.toFixed(4));
+  const dt=getSimTime();
+  const h=dt.getHours();
+  const period=h>=9&&h<22?'PEAK':h<8?'VALLEY':'FLAT';
+  const pel=document.getElementById('oracle-period');
+  if(pel){pel.textContent=period;pel.className=`period-badge ${period==='PEAK'?'badge-red':period==='VALLEY'?'badge-blue':'badge-green'}`;}
+  renderPriceChart();
+
+  const totalCO2All=communities.reduce((a,c)=>a+c.co2,0);
+  set('c-co2',f(totalCO2All,1));
+  set('c-credits','€'+f(totalCO2All/1000*65,4));
+  set('c-go','€'+f(totalProd/1000*2.5,4));
+  set('ins-balance','€'+f(globalInsBalance,2));
+  set('ins-premiums','€'+f(globalInsPremiums,2));
+  set('ins-payouts','€'+f(globalInsPayouts,2));
+
+  renderCommunityList();
+
+  applyLang();
+  if(tickCount%4===0) {
+    const isNight=communities[0].prod===0;
+    if(isNight) {
+      addLog('night','🌙 Night mode | Grid import: €'+f(totalGridCost,4)+' | Bat: '+f(communities[1].batSoc,1)+'%');
+    } else {
+      addLog('solar','☀ Solar active | Elev: '+f(communities[0].elevation,1)+'° | Prod: '+f(totalProd,4)+' kWh');
+    }
+    addLog('oracle','REE PVPC €'+globalOracle.toFixed(4)+'/kWh ['+period+']');
+    addLog('settlement','Escrow +€'+f(globalEscrowYield,4)+' | Grid cost: €'+f(totalGridCost,4));
+  }
+}
+
+function renderCommunityList() {
+  const container=document.getElementById('community-list');
+  if(!container) return;
+  set('comm-count-label',`${communities.length} ${communities.length===1?'community':'communities'}`);
+
+  if(communities.length===0) {
+    container.innerHTML=`<div style="border:1px dashed var(--border);padding:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text-dim)">
+      <div style="font-size:28px;margin-bottom:12px">⚡</div>
+      <div style="color:var(--green);letter-spacing:2px;margin-bottom:8px" data-i18n="no_comm">NO COMMUNITIES YET</div>
+      <div style="margin-bottom:16px" data-i18n="deploy_first">Deploy your first energy community to get started</div>
+      <button data-i18n="new_comm_btn" onclick="showPage('create')" style="background:var(--green);border:none;color:#000;padding:10px 24px;cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;border-radius:2px;letter-spacing:2px" data-i18n="new_comm_btn">+ NEW COMMUNITY</button>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML=communities.map((c,idx) => {
+    const isNight=c.prod===0;
+    const debtPct=c.totalRepaid/c.totalInvestment*100;
+    const typeClass=isNight?'night':(c.type==='ON_GRID'?'on-grid':'off-grid');
+    const badge=c.type==='ON_GRID'?`<span class="badge badge-green">ON-GRID</span>`:`<span class="badge badge-amber">OFF-GRID</span>`;
+    const nightBadge=isNight?`<span class="badge badge-night" style="margin-left:6px">🌙 NIGHT</span>`:'';
+
+    const collapsed=`
+      <div class="comm-header-row" onclick="toggleCommunity(${idx})">
+        <div class="comm-name-col">
+          <div class="name">${c.name} ${badge}${nightBadge}<button class="delete-comm-btn" onclick="event.stopPropagation();deleteCommunity(${idx})">✕ Remove</button></div>
+          <div class="sub">${c.members.length} MEMBERS · ${Math.round(c.panels*c.panelWp/100)/10} kWp · ${c.location.toUpperCase()}</div>
+        </div>
+        <div class="comm-stat"><div class="comm-stat-label">PRODUCTION</div><div class="comm-stat-value green">${f(c.prod,4)} kWh</div></div>
+        <div class="comm-stat"><div class="comm-stat-label">GRID COST</div><div class="comm-stat-value red">${isNight&&c.type==='ON_GRID'?'€'+f(c.gridImportCost,3):'—'}</div></div>
+        <div class="comm-stat"><div class="comm-stat-label">ESCROW</div><div class="comm-stat-value amber">€${f(c.escrow,2)}</div></div>
+        <div class="comm-stat"><div class="comm-stat-label">DEBT LEFT</div><div class="comm-stat-value blue">€${f(c.totalDebt,0)}</div></div>
+        <div class="comm-stat"><div class="comm-stat-label">REPAID</div><div class="comm-stat-value green">${f(debtPct,3)}%</div></div>
+        <div class="expand-btn ${c.expanded?'open':''}">▼</div>
+      </div>`;
+
+    const nightWarning=isNight&&c.type==='ON_GRID'?`<div class="night-cost-bar"><span style="color:var(--blue)">🌙 Night mode — importing from grid at €${GRID_PRICE_NIGHT}/kWh</span><span style="color:var(--red);font-weight:700">Cost this tick: €${f(c.gridImport*GRID_PRICE_NIGHT,4)}</span></div>`:'';
+    const maxProd=c.panels*c.panelWp/1000*0.5;
+
+    const detail=`
+      <div class="comm-detail ${c.expanded?'open':''}" id="detail-${idx}">
+        ${nightWarning}
+        <div class="detail-grid">
+          <div class="detail-section">
+            <div class="detail-title">⚡ ENERGY FLOW</div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:8px">☀ ${hToTime(c.sunrise)} → ${hToTime(c.sunset)} | Elevation: <span style="color:var(--amber)">${f(c.elevation,1)}°</span> | Cloud: ${Math.round(c.cloudFactor*100)}%</div>
+            <div class="flow-row"><div class="flow-label">☀ PROD</div><div class="flow-track"><div class="flow-fill green" style="width:${Math.min(100,c.prod/maxProd*100)}%"></div></div><div class="flow-val">${f(c.prod,4)} kWh</div></div>
+            <div class="flow-row"><div class="flow-label">🏠 SELF USE</div><div class="flow-track"><div class="flow-fill blue" style="width:${Math.min(100,c.self/maxProd*100)}%"></div></div><div class="flow-val">${f(c.self,4)} kWh</div></div>
+            ${c.type==='ON_GRID'?`
+            <div class="flow-row"><div class="flow-label">⚡ → GRID</div><div class="flow-track"><div class="flow-fill amber" style="width:${Math.min(100,c.excess/maxProd*100)}%"></div></div><div class="flow-val">${f(c.excess,4)} kWh</div></div>
+            <div class="flow-row"><div class="flow-label" style="color:var(--red)">📥 ← GRID</div><div class="flow-track"><div class="flow-fill red" style="width:${Math.min(100,c.gridImport/maxProd*100)}%"></div></div><div class="flow-val" style="color:var(--red)">${f(c.gridImport,4)} kWh</div></div>`
+            :`<div class="flow-row"><div class="flow-label">🔋 BATTERY</div><div class="flow-track"><div class="flow-fill amber" style="width:${c.batSoc}%"></div></div><div class="flow-val">${f(c.batSoc,1)}%</div></div>`}
+          </div>
+          <div class="detail-section">
+            <div class="detail-title">💶 FINANCIALS</div>
+            <div class="flow-row"><div class="flow-label" style="color:var(--green)">SAVINGS</div><div class="flow-track"><div class="flow-fill green" style="width:${Math.min(100,c.self*c.refPrice/0.5*100)}%"></div></div><div class="flow-val" style="color:var(--green)">€${f(c.self*c.refPrice,4)}</div></div>
+            ${c.type==='ON_GRID'?`<div class="flow-row"><div class="flow-label" style="color:var(--amber)">EXCESS REV</div><div class="flow-track"><div class="flow-fill amber" style="width:${Math.min(100,c.excess*globalOracle/0.5*100)}%"></div></div><div class="flow-val" style="color:var(--amber)">€${f(c.excess*globalOracle,4)}</div></div>`:''}
+            ${c.type==='ON_GRID'?`<div class="flow-row"><div class="flow-label" style="color:var(--red)">GRID COST</div><div class="flow-track"><div class="flow-fill red" style="width:${Math.min(100,c.gridImportCost/100*100)}%"></div></div><div class="flow-val" style="color:var(--red)">€${f(c.gridImportCost,3)}</div></div>`:''}
+            <div class="flow-row"><div class="flow-label" style="color:var(--amber)">ESCROW</div><div class="flow-track"><div class="flow-fill amber" style="width:${Math.min(100,c.escrow/1000*100)}%"></div></div><div class="flow-val" style="color:var(--amber)">€${f(c.escrow,2)}</div></div>
+            <div class="flow-row"><div class="flow-label">CO₂ ↓</div><div class="flow-track"><div class="flow-fill green" style="width:${Math.min(100,c.co2/100*100)}%"></div></div><div class="flow-val">${f(c.co2,1)} kg</div></div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-title">👥 MEMBERS</div>
+            ${c.members.map((m,i) => {
+              const share=c.investments[i]/(c.investments.reduce((a,b)=>a+b,0));
+              return`<div class="member-mini"><div class="member-mini-name">${m}</div><div class="member-mini-bar"><div class="member-mini-fill" style="width:${Math.min(100,share*100)}%"></div></div><div class="member-mini-val">€${f(c.escrow*share,2)}</div></div>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="debt-section">
+          <div class="debt-labels"><span>INFRASTRUCTURE DEBT — €${f(c.totalDebt,0)} remaining</span><span>${f(debtPct,4)}% repaid</span></div>
+          <div class="debt-track"><div class="debt-fill" style="width:${debtPct}%"></div></div>
+        </div>
+        <div class="onchain-actions">
+          <div class="onchain-title">🔗 ON-CHAIN ACTIONS — Program: ${c.onchain.programId.slice(0,8)}... | Settlements: <span id="settle-count-${idx}">${c.onchain.settlementCount}</span></div>
+          <div class="action-btns">
+            <button class="action-btn settle" onclick="openModal('settle',${idx})">⚡ Record Settlement</button>
+            <button class="action-btn escrow" onclick="openModal('escrow',${idx})">🏦 Deposit Escrow</button>
+            <button class="action-btn carbon" onclick="openModal('carbon',${idx})">🌿 Mint Carbon Credits</button>
+            <button class="action-btn yield" onclick="openModal('yield',${idx})">💸 Distribute Yield</button>
+            <button class="action-btn member" onclick="openModal('member',${idx})">👤 Add Member</button>
+          </div>
+          <div class="action-status" id="action-status-${idx}"></div>
+        </div>
+        <div style="padding:8px 20px 10px;font-family:var(--mono);font-size:9px;color:var(--text-dim);border-top:1px solid var(--border)">
+          🔗 Program: ${c.onchain.programId} | PDA: ${c.onchain.communityPDA||'—'}
+        </div>
+      </div>`;
+
+    return`<div class="comm-card ${typeClass}" id="comm-${idx}">${collapsed}${detail}</div>`;
+  }).join('');
+}
+
+function toggleCommunity(idx){communities[idx].expanded=!communities[idx].expanded;renderCommunityList();}
+function deleteCommunity(idx){if(confirm(`Remove "${communities[idx].name}"?`)){communities.splice(idx,1);renderCommunityList();}}
+
+// ─────────────────────────────────────────────
+// TIME CONTROLS
+// ─────────────────────────────────────────────
+function toggleTimeMode() {
+  simFrozen=!simFrozen;
+  const btn=document.getElementById('time-mode-btn');
+  const slider=document.getElementById('hour-slider');
+  const label=document.getElementById('hour-label');
+  if(simFrozen) {
+    frozenTime=new Date();
+    btn.textContent='SIM';btn.classList.remove('live');
+    slider.style.display='block';label.style.display='block';
+    slider.value=frozenTime.getHours();
+    label.textContent=frozenTime.getHours().toString().padStart(2,'0')+':00';
+  } else {
+    frozenTime=null;
+    btn.textContent='LIVE';btn.classList.add('live');
+    slider.style.display='none';label.style.display='none';
+  }
+}
+
+function onHourSlider(val) {
+  const h=parseInt(val);
+  document.getElementById('hour-label').textContent=h.toString().padStart(2,'0')+':00';
+  const now=new Date();
+  frozenTime=new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,0,0);
+  tick();
+}
+
+// ─────────────────────────────────────────────
+// MODALS
+// ─────────────────────────────────────────────
+let activeModalCommunityIdx = 0;
+
+function openModal(type, idx) {
+  activeModalCommunityIdx = idx;
+  const c = communities[idx];
+
+  if(type==='settle') {
+    document.getElementById('settle-info').textContent = `Recording settlement for "${c.name}" on-chain. Program: ${c.onchain.programId.slice(0,16)}...`;
+    document.getElementById('settle-production').value = Math.round(c.prod*1000);
+    document.getElementById('settle-self').value = Math.round(c.self*1000);
+    document.getElementById('settle-excess').value = Math.round(c.excess*1000);
+    document.getElementById('settle-price').value = Math.round(globalOracle*1000000);
+    const now=new Date();
+    document.getElementById('settle-period').value = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  }
+  if(type==='escrow') {
+    const sel=document.getElementById('escrow-community');
+    sel.innerHTML=communities.map((cc,i)=>`<option value="${i}" ${i===idx?'selected':''}>${cc.name}</option>`).join('');
+    document.getElementById('escrow-info').textContent = `Deposit SOL to "${c.name}" escrow vault PDA. Funds earn 5.5% APY.`;
+  }
+  if(type==='carbon') {
+    const kwh = c.prod;
+    document.getElementById('carbon-kwh').value = kwh.toFixed(3);
+    document.getElementById('carbon-credits').value = (kwh*0.18).toFixed(3);
+    document.getElementById('carbon-info').textContent = `Mint carbon credits for "${c.name}" based on verified production of ${kwh.toFixed(3)} kWh.`;
+    document.getElementById('carbon-kwh').oninput = function() {
+      document.getElementById('carbon-credits').value = (parseFloat(this.value||0)*0.18).toFixed(3);
+    };
+  }
+  if(type==='yield') {
+    const sel=document.getElementById('yield-member');
+    sel.innerHTML=c.members.map((m,i)=>`<option value="${i}">${m}</option>`).join('');
+    const perMember = Math.max(1000, Math.round(c.escrow / (c.members.length||1) * 100));
+    document.getElementById('yield-amount').value = perMember;
+    document.getElementById('yield-info').textContent = 'Distributing from "'+c.name+'" (€'+c.escrow.toFixed(4)+' total, €'+(c.escrow/(c.members.length||1)).toFixed(4)+' per member). ⚠ On-chain: only works after add_member registered your wallet. The amount in lamports is deducted from on-chain treasury_balance.';
+    // Populate member select
+    const yieldSel=document.getElementById('yield-member');
+    yieldSel.innerHTML='<option value="all">All Members (batch)</option>'+c.members.map((m,i)=>'<option value="'+i+'">'+m+'</option>').join('');
+    // Preview
+    const preview = document.getElementById('yield-members-preview');
+    if(preview) {
+      const totalInv = c.investments.reduce((a,b)=>a+b,0)||1;
+      preview.innerHTML = c.members.map((m,i)=>{
+        const sh=c.investments[i]/totalInv;
+        return m+' → €'+(c.escrow*sh).toFixed(4)+' ('+( sh*100).toFixed(1)+'%)';
+      }).join('<br>');
+    }
+  }
+  if(type==='member') {
+    document.getElementById('member-info').textContent = `Add a new member to "${c.name}" (currently ${c.members.length}/20 members).`;
+    document.getElementById('member-wallet').value = walletPubkey || '';
+  }
+
+  // Clear previous result
+  const res=document.getElementById(type+'-result');
+  if(res){res.style.display='none';res.textContent='';}
+
+  document.getElementById('modal-'+type).classList.add('open');
+}
+
+function closeModal(type) {
+  document.getElementById('modal-'+type).classList.remove('open');
+}
+
+function setActionStatus(idx, msg, color='var(--green)') {
+  const el=document.getElementById('action-status-'+idx);
+  if(el){el.style.color=color;el.textContent=msg;}
+}
+
+function showModalResult(type, msg, isOk, sig) {
+  const el=document.getElementById(type+'-result');
+  if(!el) return;
+  el.className='modal-result '+(isOk?'ok':'err');
+  el.style.display='block';
+  if(isOk && sig && !sig.startsWith('SIM_')) {
+    const url='https://explorer.solana.com/tx/'+sig+'?cluster=devnet';
+    el.innerHTML=msg+' <a href="'+url+'" target="_blank" style="color:inherit;text-decoration:underline;font-weight:700">View on Explorer →</a>';
+  } else {
+    el.textContent=msg;
+  }
+}
+
+// ─────────────────────────────────────────────
+// PHANTOM & WEB3 HELPERS
+// ─────────────────────────────────────────────
+const PROGRAM_ID='FRj8srGr4EvzhFgEsQ6x5iHYM9zQYmmuUZApAAy1D2p4';
+const DEVNET_RPC='https://api.devnet.solana.com';
+let walletPubkey=null;
+
+async function connectWallet() {
+  const btn=document.getElementById('wallet-btn');
+  btn.textContent='Connecting...';
+  const phantom=window.phantom?.solana||window.solana;
+  if(!phantom||!phantom.isPhantom){btn.textContent='Connect Wallet';alert('Phantom not detected!\n\n1. Install Phantom extension\n2. Use http://localhost:8080 (not file://)\n3. Refresh the page');return;}
+  try {
+    const resp=await phantom.connect();
+    walletPubkey=resp.publicKey.toString();
+    window._phantom=phantom;
+    btn.textContent=walletPubkey.slice(0,4)+'...'+walletPubkey.slice(-4);
+    btn.classList.add('connected');
+    addLog('WALLET','Connected: '+walletPubkey.slice(0,8)+'...');
+  } catch(e){btn.textContent='Connect Wallet';addLog('WALLET','Rejected: '+e.message);}
+}
+
+async function anchorDiscriminator(name) {
+  const msg=new TextEncoder().encode('global:'+name);
+  const hash=await crypto.subtle.digest('SHA-256',msg);
+  return new Uint8Array(hash).slice(0,8);
+}
+function borshString(s){const b=new TextEncoder().encode(s);const buf=new Uint8Array(4+b.length);new DataView(buf.buffer).setUint32(0,b.length,true);buf.set(b,4);return buf;}
+function borshU64(n){const buf=new Uint8Array(8);new DataView(buf.buffer).setBigUint64(0,BigInt(Math.round(n)),true);return buf;}
+function borshEnum(v){return new Uint8Array([v]);}
+
+function getWeb3(){
+  const w=window.solanaWeb3;
+  if(!w||!w.Connection) throw new Error('solana/web3.js not loaded');
+  return w;
+}
+
+async function getConnection(){return new (getWeb3().Connection)(DEVNET_RPC,'confirmed');}
+
+async function signAndSend(tx) {
+  if(!walletPubkey) throw new Error('Wallet not connected');
+  const signer=window._phantom||window.phantom?.solana||window.solana;
+  if(!signer?.isPhantom) throw new Error('Phantom not found');
+  const conn=await getConnection();
+  const{blockhash,lastValidBlockHeight}=await conn.getLatestBlockhash();
+  tx.recentBlockhash=blockhash;
+  tx.feePayer=new (getWeb3().PublicKey)(walletPubkey);
+  const signed=await signer.signTransaction(tx);
+  const sig=await conn.sendRawTransaction(signed.serialize(),{skipPreflight:false});
+  await conn.confirmTransaction({signature:sig,lastValidBlockHeight},'confirmed');
+  return sig;
+}
+
+// ─────────────────────────────────────────────
+// ACTION 1 — RECORD SETTLEMENT
+// ─────────────────────────────────────────────
+async function execSettle() {
+  const idx=activeModalCommunityIdx;
+  const c=communities[idx];
+  const btn=document.getElementById('settle-confirm');
+  btn.disabled=true;btn.textContent='Sending...';
+
+  // Guard: demo communities have no real on-chain PDA
+  if(!c.onchain.communityPDA) {
+    showModalResult('settle','⚠ Demo community — no on-chain PDA. Deploy a real community via "+ New Community" first.',false);
+    btn.disabled=false;btn.textContent='Send Transaction';return;
+  }
+
+  const prodWh=parseInt(document.getElementById('settle-production').value)||0;
+  const selfWh=parseInt(document.getElementById('settle-self').value)||0;
+  const excessWh=parseInt(document.getElementById('settle-excess').value)||0;
+  const price=parseInt(document.getElementById('settle-price').value)||148700;
+  const period=document.getElementById('settle-period').value||'2026-05';
+
+  try {
+    const web3=getWeb3();
+    const{PublicKey,Transaction,TransactionInstruction}=web3;
+    const programId=new PublicKey(PROGRAM_ID);
+    const authority=new PublicKey(walletPubkey);
+    const communityPDA=new PublicKey(c.onchain.communityPDA);
+    const disc=await anchorDiscriminator('record_settlement');
+    const periodBytes=borshString(period);
+    const data=new Uint8Array(disc.length+8+8+8+8+periodBytes.length);
+    let off=0;
+    data.set(disc,off);off+=disc.length;
+    data.set(borshU64(prodWh),off);off+=8;
+    data.set(borshU64(selfWh),off);off+=8;
+    data.set(borshU64(excessWh),off);off+=8;
+    data.set(borshU64(price),off);off+=8;
+    data.set(periodBytes,off);
+    const ix=new TransactionInstruction({programId,keys:[{pubkey:communityPDA,isSigner:false,isWritable:true},{pubkey:authority,isSigner:true,isWritable:false}],data});
+    const tx=new Transaction();tx.add(ix);
+    const sig=await signAndSend(tx);
+    c.onchain.settlementCount++;
+    const countEl=document.getElementById('settle-count-'+idx);
+    if(countEl) countEl.textContent=c.onchain.settlementCount;
+    showModalResult('settle','✅ Settlement recorded! Tx: '+sig.slice(0,20)+'...',true,sig);
+    setActionStatus(idx,'⚡ Settlement #'+c.onchain.settlementCount+' recorded on-chain');
+    addLog('CHAIN','Settlement recorded: '+period+' | '+sig.slice(0,12)+'...');
+  } catch(e) {
+    showModalResult('settle','❌ '+e.message.slice(0,120),false);
+    setActionStatus(idx,'❌ Settlement failed: '+e.message.slice(0,60),'var(--red)');
+  }
+  btn.disabled=false;btn.textContent='Send Transaction';
+}
+
+// ─────────────────────────────────────────────
+// ACTION 2 — ESCROW DEPOSIT (SOL transfer to PDA)
+// ─────────────────────────────────────────────
+async function execEscrow() {
+  const idx=parseInt(document.getElementById('escrow-community').value);
+  const c=communities[idx];
+  const btn=document.getElementById('escrow-confirm');
+  btn.disabled=true;btn.textContent='Sending...';
+
+  if(!c.onchain.communityPDA) {
+    showModalResult('escrow','⚠ Demo community — no on-chain PDA. Deploy a real community via "+ New Community" first.',false);
+    btn.disabled=false;btn.textContent='Deposit SOL';return;
+  }
+
+  const amountSOL=parseFloat(document.getElementById('escrow-amount').value)||0.01;
+  const lamports=Math.round(amountSOL*1e9);
+
+  try {
+    const web3=getWeb3();
+    const{PublicKey,Transaction,SystemProgram}=web3;
+    const communityPDA=new PublicKey(c.onchain.communityPDA);
+    const authority=new PublicKey(walletPubkey);
+
+    // Transfer SOL using raw system program instruction to avoid Buffer polyfill conflicts
+    const tx=new Transaction();
+    // System program transfer: instruction index 2 = Transfer, u32 LE + u64 LE
+    const transferData = new Uint8Array(12);
+    const dv = new DataView(transferData.buffer);
+    dv.setUint32(0, 2, true); // instruction type: Transfer
+    dv.setBigUint64(4, BigInt(lamports), true); // amount
+    const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
+    tx.add(new TransactionInstruction({
+      programId: SYSTEM_PROGRAM_ID,
+      keys: [
+        {pubkey: authority, isSigner: true, isWritable: true},
+        {pubkey: communityPDA, isSigner: false, isWritable: true}
+      ],
+      data: transferData
+    }));
+    const sig=await signAndSend(tx);
+
+    // Update local state
+    const eurAmount=amountSOL*155; // rough SOL→EUR
+    c.escrow+=eurAmount;
+
+    recordEscrowDeposit(c.name, amountSOL, eurAmount, sig);
+    saveCommunities();
+    showModalResult('escrow','✅ Deposited '+amountSOL+' SOL to escrow PDA! Tx: '+sig.slice(0,20)+'...',true,sig);
+    setActionStatus(idx,'🏦 Deposited '+amountSOL+' SOL to escrow');
+    addLog('ESCROW','Deposit '+amountSOL+' SOL | '+sig.slice(0,12)+'...');
+  } catch(e) {
+    showModalResult('escrow','❌ '+e.message.slice(0,120),false);
+    setActionStatus(idx,'❌ Escrow deposit failed','var(--red)');
+  }
+  btn.disabled=false;btn.textContent='Deposit SOL';
+}
+
+// ─────────────────────────────────────────────
+// ACTION 3 — MINT CARBON CREDITS (SPL memo + simulated mint)
+// ─────────────────────────────────────────────
+async function execCarbon() {
+  const idx=activeModalCommunityIdx;
+  const c=communities[idx];
+  const btn=document.getElementById('carbon-confirm');
+  btn.disabled=true;btn.textContent='Minting...';
+
+  const kwh=parseFloat(document.getElementById('carbon-kwh').value)||0;
+  const credits=(kwh*0.18).toFixed(3);
+
+  try {
+    const web3=getWeb3();
+    const{PublicKey,Transaction,TransactionInstruction}=web3;
+
+    // Memo instruction to record carbon credit minting on-chain
+    const MEMO_PROGRAM=new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+    const memoData=JSON.stringify({action:'carbon_credit_mint',community:c.name,kwh,credits,co2_kg:credits,ets_value_eur:(credits/1000*65).toFixed(4),timestamp:new Date().toISOString()});
+    const ix=new TransactionInstruction({programId:MEMO_PROGRAM,keys:[{pubkey:new PublicKey(walletPubkey),isSigner:true,isWritable:false}],data:new TextEncoder().encode(memoData)});
+    const tx=new Transaction();tx.add(ix);
+    const sig=await signAndSend(tx);
+
+    c.co2+=parseFloat(credits);
+    globalCarbonRev+=parseFloat(credits)/1000*65;
+
+    // Register in carbon credits log for marketplace
+    recordCarbonCredit(c.name, kwh, credits, sig);
+
+    showModalResult('carbon','✅ '+credits+' kg CO₂ credits minted on-chain! Tx: '+sig.slice(0,20)+'...',true,sig);
+    setActionStatus(idx,'🌿 '+credits+' carbon credits minted — view in Carbon tab');
+    addLog('CARBON','Minted '+credits+'kg CO₂ credits | '+sig.slice(0,12)+'...');
+  } catch(e) {
+    showModalResult('carbon','❌ '+e.message.slice(0,120),false);
+    setActionStatus(idx,'❌ Carbon mint failed','var(--red)');
+  }
+  btn.disabled=false;btn.textContent='Mint Credits';
+}
+
+// ─────────────────────────────────────────────
+// ACTION 4 — DISTRIBUTE YIELD
+// ─────────────────────────────────────────────
+async function execYield() {
+  const idx=activeModalCommunityIdx;
+  const c=communities[idx];
+  const btn=document.getElementById('yield-confirm');
+  btn.disabled=true;btn.textContent='Sending...';
+
+  if(!c.onchain.communityPDA) {
+    showModalResult('yield','⚠ Demo community — no on-chain PDA. Deploy a real community via "+ New Community" first.',false);
+    btn.disabled=false;btn.textContent='Distribute';return;
+  }
+
+  const memberSel=document.getElementById('yield-member').value;
+  const amountPerMember=parseInt(document.getElementById('yield-amount').value)||100000;
+  const totalInv=c.investments.reduce((a,b)=>a+b,0)||1;
+
+  // Build list of members to pay
+  let targetMembers=[];
+  if(memberSel==='all') {
+    targetMembers=c.members.map((_,i)=>i);
+  } else {
+    targetMembers=[parseInt(memberSel)];
+  }
+
+  try {
+    const web3=getWeb3();
+    const{PublicKey,Transaction,TransactionInstruction}=web3;
+    const programId=new PublicKey(PROGRAM_ID);
+    const authority=new PublicKey(walletPubkey);
+    const communityPDA=new PublicKey(c.onchain.communityPDA);
+
+    // Build one transaction with one instruction per member (batch)
+    const tx=new Transaction();
+    const disc=await anchorDiscriminator('distribute_yield');
+
+    for(const mIdx of targetMembers) {
+      // Member PDA was created with connected wallet as the member wallet in add_member
+      // Use the authority (connected wallet) as member wallet for on-chain PDA lookup
+      const memberWallet=new PublicKey(walletPubkey);
+
+      const share=c.investments[mIdx]/totalInv;
+      const memberAmount=Math.round(amountPerMember*share);
+      if(memberAmount<1) continue;
+
+      const[memberPDA]=PublicKey.findProgramAddressSync(
+        [new TextEncoder().encode('member'),communityPDA.toBytes(),memberWallet.toBytes()],
+        programId
+      );
+      const data=new Uint8Array(disc.length+8);
+      data.set(disc,0);data.set(borshU64(memberAmount),disc.length);
+      tx.add(new TransactionInstruction({
+        programId,
+        keys:[{pubkey:communityPDA,isSigner:false,isWritable:true},{pubkey:memberPDA,isSigner:false,isWritable:true},{pubkey:authority,isSigner:true,isWritable:false}],
+        data
+      }));
+    }
+
+    if(tx.instructions.length===0) throw new Error('No valid member instructions built');
+
+    const sig=await signAndSend(tx);
+
+    const totalEur=(amountPerMember/1e9*155)*targetMembers.length;
+    c.escrow=Math.max(0,c.escrow-totalEur);
+    saveCommunities();
+
+    const names=targetMembers.map(i=>c.members[i]).join(', ');
+    showModalResult('yield','✅ Yield distributed to '+targetMembers.length+' member(s): '+names.slice(0,40)+'... Tx: '+sig.slice(0,16)+'...',true,sig);
+    setActionStatus(idx,'💸 Yield → '+targetMembers.length+' members');
+    addLog('YIELD','Yield batch → '+targetMembers.length+' members | '+sig.slice(0,12)+'...');
+  } catch(e) {
+    showModalResult('yield','❌ '+e.message.slice(0,120),false);
+    setActionStatus(idx,'❌ Yield failed: '+e.message.slice(0,50),'var(--red)');
+  }
+  btn.disabled=false;btn.textContent='Distribute';
+}
+
+// ─────────────────────────────────────────────
+// ACTION 5 — ADD MEMBER ON-CHAIN
+// ─────────────────────────────────────────────
+async function execAddMember() {
+  const idx=activeModalCommunityIdx;
+  const c=communities[idx];
+  const btn=document.getElementById('member-confirm');
+  btn.disabled=true;btn.textContent='Sending...';
+
+  if(!c.onchain.communityPDA) {
+    showModalResult('member','⚠ Demo community — no on-chain PDA. Deploy a real community via "+ New Community" first.',false);
+    btn.disabled=false;btn.textContent='Add Member';return;
+  }
+
+  const memberWalletStr=document.getElementById('member-wallet').value.trim();
+  const investmentLamports=parseInt(document.getElementById('member-investment').value)||3000000000;
+
+  try {
+    if(c.members.length>=20) throw new Error('Community is full (max 20 members)');
+    const web3=getWeb3();
+    const{PublicKey,Transaction,TransactionInstruction,SystemProgram}=web3;
+    const programId=new PublicKey(PROGRAM_ID);
+    const payer=new PublicKey(walletPubkey);
+    const memberWallet=new PublicKey(memberWalletStr||walletPubkey);
+    const communityPDA=new PublicKey(c.onchain.communityPDA);
+    const[memberPDA]=PublicKey.findProgramAddressSync([new TextEncoder().encode('member'),communityPDA.toBytes(),memberWallet.toBytes()],programId);
+    const disc=await anchorDiscriminator('add_member');
+    const data=new Uint8Array(disc.length+8);
+    data.set(disc,0);data.set(borshU64(investmentLamports),disc.length);
+
+    const ix=new TransactionInstruction({programId,keys:[{pubkey:communityPDA,isSigner:false,isWritable:true},{pubkey:memberPDA,isSigner:false,isWritable:true},{pubkey:memberWallet,isSigner:false,isWritable:false},{pubkey:payer,isSigner:true,isWritable:true},{pubkey:SystemProgram.programId,isSigner:false,isWritable:false}],data});
+    const tx=new Transaction();tx.add(ix);
+    const sig=await signAndSend(tx);
+
+    // Update local state
+    c.members.push(memberWalletStr.slice(0,8)+'...');
+    c.investments.push(investmentLamports/1e9);
+
+    showModalResult('member','✅ Member added on-chain! PDA: '+memberPDA.toString().slice(0,20)+'... Tx: '+sig.slice(0,16)+'...',true,sig);
+    setActionStatus(idx,'👤 New member added: '+memberWalletStr.slice(0,8)+'...');
+    addLog('MEMBER','Member added: '+memberWalletStr.slice(0,8)+'... | '+sig.slice(0,12)+'...');
+  } catch(e) {
+    showModalResult('member','❌ '+e.message.slice(0,120),false);
+    setActionStatus(idx,'❌ Add member failed','var(--red)');
+  }
+  btn.disabled=false;btn.textContent='Add Member';
+}
+
+// ─────────────────────────────────────────────
+// PRICE CHART & LOG
+// ─────────────────────────────────────────────
+function renderPriceChart() {
+  const el=document.getElementById('price-chart');
+  if(!el||!priceHistory.length) return;
+  const max=Math.max(...priceHistory),min=Math.min(...priceHistory),range=max-min||0.01;
+  el.innerHTML=priceHistory.map((p,i)=>{
+    const h=((p-min)/range*80+20);
+    const c=p>0.16?'var(--red)':p>0.14?'var(--amber)':'var(--green)';
+    const curr=i===priceHistory.length-1?'outline:1px solid white;':'';
+    return`<div class="price-bar-item" style="height:${h}%;background:${c};${curr}" title="€${p.toFixed(4)}"></div>`;
+  }).join('');
+}
+
+function addLog(type,msg) {
+  const el=document.getElementById('log-body');
+  if(!el) return;
+  const dt=getSimTime();
+  const time=dt.getHours().toString().padStart(2,'0')+':'+dt.getMinutes().toString().padStart(2,'0');
+  const colors={settlement:'var(--green)',oracle:'var(--blue)',solar:'var(--amber)',night:'var(--blue)',carbon:'var(--purple)',insurance:'var(--red)',CHAIN:'var(--green)',WALLET:'var(--amber)',ESCROW:'var(--amber)',YIELD:'var(--blue)',MEMBER:'var(--text)'};
+  const e=document.createElement('div');
+  e.className='log-entry';
+  e.innerHTML=`<span class="log-time">${time}</span><span class="log-type" style="color:${colors[type]||'var(--text)'}">${type.toUpperCase()}</span><span class="log-msg">${msg}</span>`;
+  el.insertBefore(e,el.firstChild);
+  while(el.children.length>80) el.removeChild(el.lastChild);
+}
+
+// ─────────────────────────────────────────────
+// FINANCIALS PAGE
+// ─────────────────────────────────────────────
+function renderEscrowPage() {
+  const totalEscrow = communities.reduce((a,c)=>a+c.escrow, 0);
+  const solarEscrow = communities.reduce((a,c)=>a+(c.escrow*0.85), 0);
+  const carbonEscrow = escrowLog.filter(e=>e.type==='carbon_sale').reduce((a,e)=>a+e.amount_eur, 0);
+  const depositEscrow = escrowLog.filter(e=>e.type==='deposit').reduce((a,e)=>a+e.amount_eur, 0);
+
+  const f2 = n => (+n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  const setEl = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  setEl('escrow-page-total','€'+f2(totalEscrow));
+  setEl('escrow-page-solar','€'+f2(solarEscrow));
+  setEl('escrow-page-carbon','€'+f2(carbonEscrow));
+  setEl('escrow-page-deposits','€'+f2(depositEscrow));
+
+  // Community breakdown
+  const breakdown = document.getElementById('escrow-community-breakdown');
+  if(breakdown) {
+    if(communities.length===0) {
+      breakdown.innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);padding:20px;text-align:center" data-i18n="no_communities_yet">No communities deployed yet.</div>';
+    } else {
+      breakdown.innerHTML = communities.map(c => {
+        const totalInv = c.investments.reduce((a,b)=>a+b,0)||1;
+        const perMember = c.escrow / (c.members.length||1);
+        return '<div style="background:var(--surface);border:1px solid var(--border);padding:16px;margin-bottom:12px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+            '<div style="font-size:14px;font-weight:700;color:var(--green)">'+c.name+'</div>' +
+            '<div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--amber)">€'+f2(c.escrow)+'</div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;font-family:var(--mono);font-size:10px">' +
+            '<div style="background:var(--surface2);padding:10px;text-align:center"><div style="color:var(--text-dim);font-size:9px;margin-bottom:4px">PER MEMBER</div><div style="color:var(--amber)">€'+f2(perMember)+'</div></div>' +
+            '<div style="background:var(--surface2);padding:10px;text-align:center"><div style="color:var(--text-dim);font-size:9px;margin-bottom:4px">DEBT REPAID</div><div style="color:var(--blue)">€'+f2(c.totalRepaid)+'</div></div>' +
+            '<div style="background:var(--surface2);padding:10px;text-align:center"><div style="color:var(--text-dim);font-size:9px;margin-bottom:4px">DEBT LEFT</div><div style="color:var(--red)">€'+f2(c.totalDebt)+'</div></div>' +
+          '</div>' +
+          '<div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:8px;letter-spacing:1px">MEMBERS</div>' +
+          c.members.map((m,i) => {
+            const sh = c.investments[i]/(totalInv);
+            const memberEscrow = c.escrow*sh;
+            const wallet = (c.memberWallets||[])[i]||'—';
+            return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;font-family:var(--mono);font-size:10px;padding:6px 0;border-bottom:1px solid var(--border)">' +
+              '<span style="color:var(--text)">'+m+'</span>' +
+              '<span style="color:var(--text-dim);font-size:9px">'+wallet.slice(0,12)+'...</span>' +
+              '<span style="color:var(--text-dim)">'+(sh*100).toFixed(1)+'%</span>' +
+              '<span style="color:var(--amber)">€'+f2(memberEscrow)+'</span>' +
+            '</div>';
+          }).join('') +
+        '</div>';
+      }).join('');
+    }
+  }
+
+  // TX log
+  const txLog = document.getElementById('escrow-tx-log');
+  if(txLog) {
+    if(escrowLog.length===0) {
+      txLog.innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center;padding:20px" data-i18n="no_escrow_txs">No escrow transactions yet.</div>';
+    } else {
+      txLog.innerHTML = '<div style="display:grid;grid-template-columns:1fr 2fr 1fr 1fr 1fr;gap:8px;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px"><span>TIME</span><span>COMMUNITY</span><span>TYPE</span><span>AMOUNT</span><span>TX</span></div>' +
+        escrowLog.slice().reverse().map(e => {
+          const dt = new Date(e.timestamp);
+          const time = dt.getHours().toString().padStart(2,'0')+':'+dt.getMinutes().toString().padStart(2,'0');
+          const color = e.type==='deposit'?'var(--amber)':e.type==='carbon_sale'?'var(--purple)':'var(--green)';
+          const txLink = e.txSig && e.txSig!=='CARBON_SALE'
+            ? '<a href="https://explorer.solana.com/tx/'+e.txSig+'?cluster=devnet" target="_blank" style="color:var(--blue);text-decoration:none">'+e.txSig.slice(0,8)+'...</a>'
+            : '<span style="color:var(--purple)">CARBON SALE</span>';
+          return '<div style="display:grid;grid-template-columns:1fr 2fr 1fr 1fr 1fr;gap:8px;font-family:var(--mono);font-size:10px;padding:6px 0;border-bottom:1px solid var(--border)">' +
+            '<span style="color:var(--text-dim)">'+time+'</span>' +
+            '<span style="color:var(--green)">'+e.community+'</span>' +
+            '<span style="color:'+color+'">'+e.type.toUpperCase()+'</span>' +
+            '<span style="color:var(--amber)">€'+f2(e.amount_eur)+'</span>' +
+            '<span>'+txLink+'</span>' +
+          '</div>';
+        }).join('');
+    }
+  }
+}
+
+function renderFinancials() {
+  const ab=document.getElementById('alloc-bars');
+  if(ab&&!ab.dataset.done){
+    ab.dataset.done='1';
+    const allocs=[{l:'Debt Repayment',pct:55,c:'var(--blue)'},{l:'Escrow Fund (5.5% APY)',pct:15,c:'var(--amber)'},{l:'Operations & Maintenance',pct:20,c:'var(--text-dim)'},{l:'Insurance Premium',pct:2,c:'var(--blue)'},{l:'Protocol Fee',pct:5,c:'var(--purple)'},{l:'Reserve Fund',pct:3,c:'var(--green)'}];
+    ab.innerHTML=allocs.map(a=>`<div class="alloc-row"><div class="alloc-label-row"><span>${a.l}</span><span style="color:${a.c}">${a.pct}%</span></div><div class="alloc-track"><div class="alloc-fill" style="width:${a.pct}%;background:${a.c}"></div></div></div>`).join('');
+  }
+  const cb=document.getElementById('cost-breakdown-panel');
+  if(cb){
+    const totalGridCost=communities.reduce((a,c)=>a+c.gridImportCost,0);
+    const totalGridKwh=communities.reduce((a,c)=>a+c.gridImport,0);
+    cb.innerHTML=`<div style="font-family:var(--mono);font-size:10px"><div style="color:var(--text-dim);letter-spacing:1px;margin-bottom:12px">COST vs REVENUE ANALYSIS</div><div class="alloc-row"><div class="alloc-label-row"><span style="color:var(--red)">Grid Import Cost</span><span style="color:var(--red)">€${f(totalGridCost,4)}</span></div><div class="alloc-track"><div class="alloc-fill" style="width:${Math.min(100,totalGridCost/10*100)}%;background:var(--red)"></div></div></div><div class="alloc-row"><div class="alloc-label-row"><span style="color:var(--amber)">Grid Import Volume</span><span style="color:var(--amber)">${f(totalGridKwh,4)} kWh</span></div><div class="alloc-track"><div class="alloc-fill" style="width:${Math.min(100,totalGridKwh/5*100)}%;background:var(--amber)"></div></div></div></div>`;
+  }
+  const mt=document.getElementById('member-fin-table');
+  if(mt){
+    mt.innerHTML=communities.map(c=>{
+      const totalInv=c.investments.reduce((a,b)=>a+b,0);
+      return`<div style="margin-bottom:20px"><div style="font-family:var(--mono);font-size:10px;color:var(--green);letter-spacing:2px;margin-bottom:8px">${c.name}</div><div class="fin-table-row fin-table-header"><span>MEMBER</span><span>INVESTMENT</span><span>SHARE</span><span>SAVINGS</span><span>ESCROW</span><span>CARBON</span></div>${c.members.map((m,i)=>{const sh=c.investments[i]/totalInv;return`<div class="fin-table-row"><span style="color:var(--text)">${m}</span><span style="color:var(--text-dim)">€${f(c.investments[i],0)}</span><span style="color:var(--text-dim)">${f(sh*100,1)}%</span><span style="color:var(--green)">€${f(c.self*c.refPrice*sh,4)}</span><span style="color:var(--amber)">€${f(c.escrow*sh,4)}</span><span style="color:var(--purple)">€${f(c.co2/1000*65*sh,4)}</span></div>`;}).join('')}</div>`;
+    }).join('');
+  }
+  const ep=document.getElementById('escrow-proj');
+  if(ep&&!ep.dataset.done){
+    ep.dataset.done='1';
+    let bal=0;const monthly=communities.reduce((a,c)=>a+(c.prod*c.refPrice*0.15*30),0)||200;const rows=[];
+    for(let y=1;y<=5;y++){for(let m=0;m<12;m++){bal+=monthly;bal*=(1+0.055/12);}rows.push(`<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-dim)">Year ${y}</span><span style="color:var(--amber)">€${f(bal)}</span><span style="color:var(--green);font-size:9px">+€${f(monthly*12)} contributions</span></div>`);}
+    ep.innerHTML=rows.join('');
+  }
+}
+
+// ─────────────────────────────────────────────
+// COMMUNITY CREATOR
+// ─────────────────────────────────────────────
+let currentStep=1;
+
+function goStep(step) {
+  if(step>currentStep&&!validateStep(currentStep)) return;
+  document.querySelectorAll('.form-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('fs-'+step).classList.add('active');
+  for(let i=1;i<=6;i++){
+    const c=document.getElementById('sc-'+i);
+    const l=document.getElementById('sl-'+i);
+    if(i<step){c.classList.remove('active');c.classList.add('done');c.textContent='✓';}
+    else if(i===step){c.classList.add('active');c.classList.remove('done');c.textContent=i;}
+    else{c.classList.remove('active','done');c.textContent=i;}
+    if(l) l.classList.toggle('done',i<step);
+  }
+  currentStep=step;
+  if(step===2||step===3) updateAllEstimates();
+  if(step===5) renderFullProjection();
+  if(step===6) startDeploy();
+}
+
+function validateStep(s) {
+  if(s===1&&!document.getElementById('f-name').value.trim()){alert('Please enter a community name');return false;}
+  return true;
+}
+
+function onTypeChange() {
+  const isOff=document.getElementById('f-type').value==='OFF_GRID';
+  document.getElementById('f-battery-field').style.display=isOff?'block':'none';
+  document.getElementById('f-battery-cost-field').style.display=isOff?'block':'none';
+  updateAllEstimates();
+}
+
+function updateAllEstimates() {
+  const panels=parseInt(document.getElementById('f-panels')?.value)||48;
+  const wp=parseInt(document.getElementById('f-panel-wp')?.value)||400;
+  const loc=document.getElementById('f-location')?.value||'barcelona';
+  const orient=document.getElementById('f-orient')?.value||'south';
+  const tilt=parseInt(document.getElementById('f-tilt')?.value)||30;
+  const est=estimatePVGIS(loc,panels,wp,tilt,orient);
+  const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  s('pv-kwp',est.kwp);s('pv-annual',est.annual.toLocaleString());s('pv-monthly',Math.round(est.annual/12).toLocaleString());s('pv-daily',Math.round(est.annual/365).toLocaleString());
+  const bars=document.getElementById('pv-monthly-bars');
+  if(bars){const max=Math.max(...est.monthly);bars.innerHTML=est.monthly.map((v,i)=>{const c=i>=5&&i<=7?'var(--green)':i>=2&&i<=8?'var(--green-mid)':'var(--text-dim)';return`<div class="month-bar" style="height:${v/max*100}%;background:${c}"></div>`;}).join('');}
+  updateCostEstimate(est);updateMembersTotal();
+}
+
+function updateCostEstimate(est) {
+  const panels=parseInt(document.getElementById('f-panels')?.value)||48;
+  const wp=parseInt(document.getElementById('f-panel-wp')?.value)||400;
+  const kwp=est?est.kwp:panels*wp/1000;
+  const panelCostWp=parseFloat(document.getElementById('f-panel-cost')?.value)||0.35;
+  const installCostKwp=parseFloat(document.getElementById('f-install-cost')?.value)||200;
+  const batteryCostKwh=parseFloat(document.getElementById('f-battery-cost')?.value)||400;
+  const batteryKwh=parseFloat(document.getElementById('f-battery')?.value)||0;
+  const isOff=document.getElementById('f-type')?.value==='OFF_GRID';
+  const maint=parseFloat(document.getElementById('f-maintenance')?.value)||1.5;
+  const interest=parseFloat(document.getElementById('f-interest')?.value)||4.5;
+  const loanYears=parseInt(document.getElementById('f-loan-years')?.value)||10;
+  const panelCost=panels*wp*panelCostWp;
+  const installCost=kwp*installCostKwp;
+  const batteryCost=isOff?batteryKwh*batteryCostKwh:0;
+  const total=panelCost+installCost+batteryCost;
+  const annualMaint=total*maint/100;
+  const members=[...document.querySelectorAll('.m-inv')];
+  const memberTotal=members.reduce((a,m)=>a+parseFloat(m.value||0),0);
+  const bankAmount=Math.max(0,total-memberTotal);
+  const monthlyRate=interest/100/12;
+  const nPayments=loanYears*12;
+  const monthlyPayment=bankAmount>0&&monthlyRate>0?bankAmount*(monthlyRate*Math.pow(1+monthlyRate,nPayments))/(Math.pow(1+monthlyRate,nPayments)-1):bankAmount/nPayments;
+  const bankInterestTotal=monthlyPayment*nPayments-bankAmount;
+  const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  s('ce-panels','€'+f(panelCost,2));s('ce-battery',isOff?'€'+f(batteryCost,0):'N/A');s('ce-install','€'+f(installCost,0));s('ce-total','€'+f(total,0));
+  const bd=document.getElementById('cost-breakdown-detail');
+  if(bd) bd.innerHTML=`<div class="cost-row"><span class="cost-row-label">Panels (${panels} × ${wp}Wp × €${panelCostWp}/Wp)</span><span class="cost-row-val">€${f(panelCost,0)}</span></div>${isOff?`<div class="cost-row"><span class="cost-row-label">Battery (${batteryKwh}kWh × €${batteryCostKwh}/kWh)</span><span class="cost-row-val">€${f(batteryCost,0)}</span></div>`:''}<div class="cost-row"><span class="cost-row-label">Installation</span><span class="cost-row-val">€${f(installCost,0)}</span></div><div class="cost-row"><span class="cost-row-label">Annual Maintenance</span><span class="cost-row-val">€${f(annualMaint,0)}/yr</span></div><div class="cost-row" style="margin-top:6px"><span style="color:var(--text)">TOTAL CAPEX</span><span style="color:var(--amber)">€${f(total,0)}</span></div>${bankAmount>0?`<div class="cost-row"><span class="cost-row-label" style="color:var(--red)">Bank financing needed</span><span style="color:var(--red)">€${f(bankAmount,0)}</span></div><div class="cost-row"><span class="cost-row-label" style="color:var(--red)">Monthly payment (${interest}% / ${loanYears}yr)</span><span style="color:var(--red)">€${f(monthlyPayment,2)}/mo</span></div>`:'<div class="cost-row"><span style="color:var(--green)">✅ Fully member-funded</span></div>'}`;
+}
+
+function generateSolanaKeypair() {
+  const chars='ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz123456789';
+  return Array.from({length:44},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+function regenWallet(btn) {
+  // btn is the ↻ button, prev sibling is the wallet input
+  const walletInput = btn.previousElementSibling;
+  if(walletInput && walletInput.classList.contains('m-wallet')) {
+    walletInput.value = generateSolanaKeypair();
+  }
+}
+
+function addMember(){
+  const list=document.getElementById('members-list');
+  const div=document.createElement('div');
+  div.className='member-input-row';
+  div.style.cssText='flex-wrap:wrap;gap:6px;';
+  const wallet=generateSolanaKeypair();
+  const rowId='row'+(Date.now()+Math.random()).toString(36).slice(-6);
+  div.id=rowId;
+  div.innerHTML='<input type="text" placeholder="Member name" class="m-name" style="flex:1;min-width:120px"/>'+
+    '<input type="number" class="inv-input m-inv" value="3000" min="100" oninput="updateMembersTotal()" style="width:90px;flex:none"/>'+
+    '<input type="text" class="m-wallet" value="'+wallet+'" style="flex:2;min-width:200px;font-size:10px"/>'+
+    '<button onclick="regenWallet(this)" title="Generate new wallet" style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);padding:7px 8px;cursor:pointer;font-family:var(--mono);font-size:9px;border-radius:2px;white-space:nowrap">↻</button>'+
+    '<button class="remove-btn" onclick="removeMember(this)">✕</button>';
+  list.appendChild(div);
+  updateMembersTotal();
+}
+function removeMember(btn){if(document.querySelectorAll('.member-input-row').length>1){btn.parentElement.remove();updateMembersTotal();}}
+function updateMembersTotal(){const invs=[...document.querySelectorAll('.m-inv')];const total=invs.reduce((a,i)=>a+parseFloat(i.value||0),0);const ms=document.getElementById('members-summary');if(ms) ms.textContent=`Total member investment: €${f(total,0)} from ${invs.length} members`;updateCostEstimate(null);}
+
+function renderFullProjection(){
+  const panels=parseInt(document.getElementById('f-panels').value)||48;
+  const wp=parseInt(document.getElementById('f-panel-wp').value)||400;
+  const loc=document.getElementById('f-location').value||'barcelona';
+  const orient=document.getElementById('f-orient').value||'south';
+  const tilt=parseInt(document.getElementById('f-tilt').value)||30;
+  const refPrice=parseFloat(document.getElementById('f-refprice').value)||0.22;
+  const type=document.getElementById('f-type').value;
+  const households=parseInt(document.getElementById('f-households').value)||10;
+  const maint=parseFloat(document.getElementById('f-maintenance').value)||1.5;
+  const interest=parseFloat(document.getElementById('f-interest').value)||4.5;
+  const loanYears=parseInt(document.getElementById('f-loan-years').value)||10;
+  const batteryKwh=type==='OFF_GRID'?parseFloat(document.getElementById('f-battery').value)||48:0;
+  const members=[...document.querySelectorAll('.m-name')].map(i=>i.value||'Member');
+  const invs=[...document.querySelectorAll('.m-inv')].map(i=>parseFloat(i.value)||0);
+  const memberTotal=invs.reduce((a,b)=>a+b,0);
+  const est=estimatePVGIS(loc,panels,wp,tilt,orient);
+  const kwp=est.kwp;
+  const panelCost=panels*wp*(parseFloat(document.getElementById('f-panel-cost').value)||0.35);
+  const installCost=kwp*(parseFloat(document.getElementById('f-install-cost').value)||200);
+  const batteryCost=batteryKwh*(parseFloat(document.getElementById('f-battery-cost').value)||400);
+  const totalCapex=panelCost+installCost+batteryCost;
+  const bankAmount=Math.max(0,totalCapex-memberTotal);
+  const monthlyRate=interest/100/12;const nPay=loanYears*12;
+  const monthlyBank=bankAmount>0&&monthlyRate>0?bankAmount*(monthlyRate*Math.pow(1+monthlyRate,nPay))/(Math.pow(1+monthlyRate,nPay)-1):0;
+  const annualMaint=totalCapex*maint/100;
+  const monthlyProd=est.annual/12;const selfCons=monthlyProd*0.65;const excess=monthlyProd*0.35;
+  const monthlySavings=selfCons*refPrice;
+  const monthlyExcessRev=type==='ON_GRID'?excess*0.148:0;
+  const monthlyGridCost=type==='ON_GRID'?households*0.3*8*30*GRID_PRICE_NIGHT:0;
+  const monthlyGross=monthlySavings+monthlyExcessRev-monthlyGridCost-monthlyBank-annualMaint/12;
+  const netMonthly=Math.max(0,monthlyGross);
+  const monthlyDebt=netMonthly*0.55;const monthlyEscrow=netMonthly*0.15;
+  const monthsPayback=monthlyDebt>0?Math.ceil(totalCapex/monthlyDebt):999;
+  const annualCO2=est.annual*0.18;const annualCarbon=annualCO2/1000*65+est.annual/1000*2.5;
+  const fp=document.getElementById('full-projection-content');
+  fp.innerHTML=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">${[{l:'System',v:kwp+'kWp',c:'var(--green)'},{l:'Annual Production',v:est.annual.toLocaleString()+' kWh',c:'var(--green)'},{l:'Total CAPEX',v:'€'+f(totalCapex,0),c:'var(--amber)'},{l:'Debt-Free In',v:monthsPayback>500?'>40yr':monthsPayback+' mo',c:'var(--blue)'},{l:'Monthly Net Revenue',v:'€'+f(netMonthly),c:'var(--green)'},{l:'Monthly Grid Cost',v:type==='ON_GRID'?'€'+f(monthlyGridCost):'N/A (battery)',c:'var(--red)'},{l:'Bank Payment/mo',v:bankAmount>0?'€'+f(monthlyBank):'None',c:bankAmount>0?'var(--red)':'var(--green)'},{l:'Annual Maintenance',v:'€'+f(annualMaint,0),c:'var(--amber)'},{l:'Monthly Escrow',v:'€'+f(monthlyEscrow),c:'var(--amber)'},{l:'Annual CO₂ Avoided',v:Math.round(annualCO2)+' kg',c:'var(--green)'},{l:'Annual Carbon Revenue',v:'€'+f(annualCarbon,0),c:'var(--purple)'},{l:'Members',v:members.length,c:'var(--text)'}].map(({l,v,c})=>`<div style="background:var(--surface2);border:1px solid var(--border);padding:14px;text-align:center"><div style="font-family:var(--mono);font-size:8px;color:var(--text-dim);letter-spacing:1px;margin-bottom:5px">${l}</div><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:${c}">${v}</div></div>`).join('')}</div><div style="background:var(--surface2);border:1px solid var(--border);padding:16px"><div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:2px;margin-bottom:12px">MEMBER BREAKDOWN</div>${members.map((m,i)=>{const sh=(invs[i]||0)/(memberTotal||1);return`<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text)">${m}</span><span style="color:var(--text-dim)">€${f(invs[i]||0,0)}</span><span style="color:var(--green)">${f(sh*100,1)}%</span><span style="color:var(--amber)">€${f(netMonthly*sh)}/mo</span></div>`}).join('')}${bankAmount>0?`<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;padding:5px 0;color:var(--red)"><span>🏦 Bank Financing</span><span>€${f(bankAmount,0)}</span><span>${f(bankAmount/totalCapex*100,1)}%</span><span>€${f(monthlyBank)}/mo</span></div>`:''}</div>`;
+}
+
+// ─────────────────────────────────────────────
+// DEPLOY
+// ─────────────────────────────────────────────
+async function startDeploy(){
+  const name=document.getElementById('f-name').value||'My Community';
+  const type=document.getElementById('f-type').value;
+  const loc=document.getElementById('f-location').value;
+  const panels=parseInt(document.getElementById('f-panels').value)||48;
+  const wp=parseInt(document.getElementById('f-panel-wp').value)||400;
+  const members=[...document.querySelectorAll('.m-name')].map(i=>i.value||'Member');
+  const invs=[...document.querySelectorAll('.m-inv')].map(i=>parseFloat(i.value)||0);
+  const totalInv=invs.reduce((a,b)=>a+b,0);
+  const refPrice=parseFloat(document.getElementById('f-refprice').value)||0.22;
+  const households=parseInt(document.getElementById('f-households').value)||10;
+  const batteryKwh=type==='OFF_GRID'?parseFloat(document.getElementById('f-battery').value)||48:0;
+  const prog=document.getElementById('deploy-progress');
+
+  if(!walletPubkey||!window._phantom) {
+    if(prog) prog.innerHTML=`<span style="color:var(--red)">⚠ Connect your Phantom wallet first</span>`;
+    await new Promise(r=>setTimeout(r,1500));
+    try{await connectWallet();if(!walletPubkey)return;}catch(e){return;}
+  }
+
+  const simSteps=['Validating community parameters...','Generating PDA...','Building transaction...'];
+  for(const s of simSteps){if(prog)prog.innerHTML=`<span class="spinner"></span>${s}`;await new Promise(r=>setTimeout(r,400));}
+
+  let communityPDA,txSig;
+  try{
+    const web3=getWeb3();
+    const{Connection,PublicKey,Transaction,TransactionInstruction,SystemProgram}=web3;
+    if(prog) prog.innerHTML=`<span class="spinner"></span>Building initialize_community tx...`;
+    const programId=new PublicKey(PROGRAM_ID);
+    const authority=new PublicKey(walletPubkey);
+    const[pdaPub]=PublicKey.findProgramAddressSync([new TextEncoder().encode('community'),authority.toBytes(),new TextEncoder().encode(name)],programId);
+    communityPDA=pdaPub.toString();
+    const disc=await anchorDiscriminator('initialize_community');
+    const nameBytes=borshString(name);
+    const modeBytes=borshEnum(type==='ON_GRID'?0:1);
+    const invBytes=borshU64(Math.round(totalInv*1e6));
+    const priceBytes=borshU64(Math.round(refPrice*1e6));
+    const data=new Uint8Array(disc.length+nameBytes.length+modeBytes.length+invBytes.length+priceBytes.length);
+    let off=0;data.set(disc,off);off+=disc.length;data.set(nameBytes,off);off+=nameBytes.length;data.set(modeBytes,off);off+=modeBytes.length;data.set(invBytes,off);off+=invBytes.length;data.set(priceBytes,off);
+    const ix=new TransactionInstruction({programId,keys:[{pubkey:pdaPub,isSigner:false,isWritable:true},{pubkey:authority,isSigner:true,isWritable:true},{pubkey:SystemProgram.programId,isSigner:false,isWritable:false}],data});
+    const tx=new Transaction();tx.add(ix);
+    if(prog) prog.innerHTML=`<span class="spinner"></span>Waiting for Phantom approval...`;
+    txSig=await signAndSend(tx);
+    if(prog) prog.innerHTML=`<span style="color:var(--green)">✅ Community live on Solana devnet!</span>`;
+    addLog('CHAIN','Community deployed: '+name);
+  }catch(e){
+    console.error(e);
+    if(prog) prog.innerHTML=`<span style="color:var(--red)">Error: ${e.message.slice(0,100)}</span>`;
+    await new Promise(r=>setTimeout(r,3000));
+    const chars='ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz123456789';
+    txSig='SIM_'+Array.from({length:84},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+    communityPDA=communityPDA||Array.from({length:44},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+  }
+
+  const isReal=txSig&&!txSig.startsWith('SIM_');
+  const explorerUrl=isReal?`https://explorer.solana.com/tx/${txSig}?cluster=devnet`:`https://explorer.solana.com/address/${communityPDA}?cluster=devnet`;
+  document.getElementById('deploying-card').style.display='none';
+  document.getElementById('deployed-card').style.display='block';
+  document.getElementById('deploy-tx-box').innerHTML=`Program: <span style="color:var(--green)">${PROGRAM_ID}</span><br>Community PDA: <span style="color:var(--amber)">${communityPDA}</span><br>Authority: <span style="color:var(--blue)">${walletPubkey||'simulated'}</span><br>Tx: <a class="tx-link" href="${explorerUrl}" target="_blank">${txSig.slice(0,20)}...${txSig.slice(-8)}</a><br><span style="color:${isReal?'var(--green)':'var(--amber)'};font-size:9px">${isReal?'🔗 Real on-chain transaction':'⚠ Simulated — connect Phantom for real deploy'}</span>`;
+  document.getElementById('deploy-details').innerHTML=`Community: ${name} | Type: ${type} | Location: ${loc}<br>System: ${Math.round(panels*wp/100)/10} kWp | Members: ${members.length} | Investment: €${f(totalInv,0)}<br>Network: Solana Devnet`;
+
+  const memberWallets=[...document.querySelectorAll('.m-wallet')].map(i=>i.value||walletPubkey);
+  window._pendingCommunity={id:communityPDA.slice(0,16).toLowerCase(),name,type,location:loc,panels,panelWp:wp,households,battery:batteryKwh,totalDebt:totalInv,totalInvestment:totalInv,refPrice,escrow:0,totalRepaid:0,co2:0,gridImportCost:0,gridImportKwh:0,prod:0,self:0,excess:0,gridImport:0,batSoc:type==='OFF_GRID'?75:0,cloudFactor:1,elevation:0,sunrise:6.5,sunset:20.5,members,investments:invs,memberWallets,onchain:{programId:PROGRAM_ID,communityPDA,settlementCount:0,authority:walletPubkey,txSig},expanded:false};
+}
+
+function saveCommunities() {
+  try {
+    // Save only serializable fields (no functions)
+    const toSave = communities.map(c => ({
+      id:c.id, name:c.name, type:c.type, location:c.location,
+      panels:c.panels, panelWp:c.panelWp, households:c.households, battery:c.battery,
+      totalDebt:c.totalDebt, totalInvestment:c.totalInvestment, refPrice:c.refPrice,
+      escrow:c.escrow, totalRepaid:c.totalRepaid, co2:c.co2,
+      gridImportCost:c.gridImportCost, gridImportKwh:c.gridImportKwh, batSoc:c.batSoc,
+      members:c.members, investments:c.investments, memberWallets:c.memberWallets||[],
+      onchain:c.onchain, expanded:false,
+    }));
+    localStorage.setItem('voltcore_communities', JSON.stringify(toSave));
+  } catch(e) { console.warn('Save error:', e); }
+}
+
+function onDeployComplete(){
+  if(window._pendingCommunity){
+    communities.push(window._pendingCommunity);window._pendingCommunity=null;
+    saveCommunities();
+    currentStep=1;document.querySelectorAll('.form-step').forEach(s=>s.classList.remove('active'));
+    document.getElementById('fs-1').classList.add('active');
+    for(let i=1;i<=6;i++){const c=document.getElementById('sc-'+i);const l=document.getElementById('sl-'+i);c.classList.remove('active','done');c.textContent=i;if(l)l.classList.remove('done');}
+    document.getElementById('sc-1').classList.add('active');
+    document.getElementById('deployed-card').style.display='none';document.getElementById('deploying-card').style.display='block';
+  }
+  showPage('dashboard');
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// CARBON CREDITS REGISTRY
+// ─────────────────────────────────────────────
+let carbonCreditsLog = [];
+let escrowLog = []; // {community, type, amount_sol, amount_eur, txSig, timestamp}
+
+function recordEscrowDeposit(community, amountSOL, amountEUR, txSig) {
+  escrowLog.push({community, type:'deposit', amount_sol:amountSOL, amount_eur:amountEUR, txSig, timestamp:new Date().toISOString()});
+  try { localStorage.setItem('voltcore_escrow_log', JSON.stringify(escrowLog)); } catch(e){}
+}
+function recordEscrowYield(community, amountEUR, txSig) {
+  escrowLog.push({community, type:'carbon_sale', amount_sol:0, amount_eur:amountEUR, txSig:'CARBON_SALE', timestamp:new Date().toISOString()});
+  try { localStorage.setItem('voltcore_escrow_log', JSON.stringify(escrowLog)); } catch(e){}
+} // {community, kwh, kg, ets_eur, txSig, timestamp}
+
+function recordCarbonCredit(community, kwh, kg, txSig) {
+  carbonCreditsLog.push({
+    community, kwh: parseFloat(kwh), kg: parseFloat(kg),
+    ets_eur: (parseFloat(kg)/1000*65).toFixed(4),
+    go_eur: (parseFloat(kwh)/1000*2.5).toFixed(4),
+    txSig, timestamp: new Date().toISOString()
+  });
+  renderCarbonCredits();
+}
+
+function renderCarbonCredits() {
+  const el = document.getElementById('carbon-credits-list');
+  const badge = document.getElementById('total-credits-badge');
+  if(!el) return;
+  const totalKg = carbonCreditsLog.reduce((a,c)=>a+c.kg, 0);
+  if(badge) badge.textContent = totalKg.toFixed(3)+' kg CO₂';
+  if(carbonCreditsLog.length === 0) {
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center;padding:20px">No carbon credits minted yet. Use "🌿 Mint Carbon Credits" on any community.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:8px;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px">
+      <span>COMMUNITY</span><span>kWh</span><span>kg CO₂</span><span>ETS €</span><span>GO €</span><span>TX</span>
+    </div>
+    ${carbonCreditsLog.map(c=>`
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:8px;font-family:var(--mono);font-size:10px;padding:7px 0;border-bottom:1px solid var(--border);align-items:center">
+        <span style="color:var(--green)">${c.community}</span>
+        <span>${c.kwh.toFixed(3)}</span>
+        <span style="color:var(--green)">${c.kg.toFixed(3)}</span>
+        <span style="color:var(--purple)">€${c.ets_eur}</span>
+        <span style="color:var(--blue)">€${c.go_eur}</span>
+        <span><a href="https://explorer.solana.com/tx/${c.txSig}?cluster=devnet" target="_blank" style="color:var(--blue);text-decoration:none;font-size:9px">${c.txSig.slice(0,8)}... →</a></span>
+      </div>`).join('')}
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:8px;font-family:var(--mono);font-size:10px;padding:10px 0;color:var(--green);font-weight:700;border-top:2px solid var(--border);margin-top:4px">
+      <span>TOTAL</span><span>${carbonCreditsLog.reduce((a,c)=>a+c.kwh,0).toFixed(3)}</span>
+      <span>${totalKg.toFixed(3)} kg</span>
+      <span style="color:var(--purple)">€${carbonCreditsLog.reduce((a,c)=>a+parseFloat(c.ets_eur),0).toFixed(4)}</span>
+      <span style="color:var(--blue)">€${carbonCreditsLog.reduce((a,c)=>a+parseFloat(c.go_eur),0).toFixed(4)}</span>
+      <span></span>
+    </div>`;
+}
+
+function openCarbonMarketplace() {
+  var w = window.open('', '_blank', 'width=1200,height=800');
+  var credits = carbonCreditsLog;
+  var totalKg = credits.reduce(function(a,c){return a+c.kg;}, 0);
+  var rows = '';
+  for(var i=0; i<credits.length; i++) {
+    var c = credits[i];
+    var ets = (c.kg/1000*65).toFixed(4);
+    var go  = (c.kwh/1000*2.5).toFixed(4);
+    var tot = (parseFloat(ets)+parseFloat(go)).toFixed(4);
+    var dt  = new Date(c.timestamp).toLocaleDateString('en-GB');
+    rows += '<div style="background:#0c110d;border:1px solid #1c2b1e;padding:20px;position:relative">';
+    rows += '<div style="position:absolute;top:12px;right:12px;font-size:8px;letter-spacing:1px;padding:2px 8px;border-radius:2px;background:rgba(45,255,127,0.1);color:#2dff7f;border:1px solid #2dff7f">AVAILABLE</div>';
+    rows += '<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#2dff7f;margin-bottom:6px">'+c.community+'</div>';
+    rows += '<div style="font-size:9px;color:#3d5940;margin-bottom:8px">'+dt+' · Solar PV</div>';
+    rows += '<div style="font-size:28px;font-weight:700;color:#b060ff;margin:8px 0 2px">'+c.kg+' kg</div>';
+    rows += '<div style="font-size:9px;letter-spacing:1px;color:#3d5940;margin-bottom:10px">CO2 AVOIDED</div>';
+    rows += '<div style="font-size:10px;margin-bottom:12px">';
+    rows += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1c2b1e"><span style="color:#3d5940">Energy Produced</span><span>'+c.kwh+' kWh</span></div>';
+    rows += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1c2b1e"><span style="color:#3d5940">ETS Value</span><span style="color:#b060ff">'+ets+'</span></div>';
+    rows += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1c2b1e"><span style="color:#3d5940">GO Certificate</span><span style="color:#38e8ff">'+go+'</span></div>';
+    rows += '</div>';
+    rows += '<div style="background:#111812;border:1px solid #b060ff;padding:10px;text-align:center;margin-bottom:10px">';
+    rows += '<div style="font-size:22px;font-weight:700;color:#b060ff">'+tot+'</div>';
+    rows += '<div style="font-size:9px;color:#3d5940;letter-spacing:1px">ETS + GO BUNDLE</div>';
+    rows += '</div>';
+    rows += '<button id="buybtn'+i+'" style="width:100%;background:#b060ff;border:none;color:#fff;padding:10px;cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;letter-spacing:2px;border-radius:2px;margin-bottom:8px" onclick="handleBuy('+i+',\''+c.community+'\','+parseFloat(ets)+','+parseFloat(go)+')">BUY CREDIT BUNDLE</button>';
+    rows += '<a href="https://explorer.solana.com/tx/'+c.txSig+'?cluster=devnet" target="_blank" style="font-size:9px;color:#38e8ff;text-decoration:none;display:block;text-align:center">'+txt.explorer+'</a>';
+    rows += '</div>';
+  }
+  var empty = credits.length===0 ? '<div style="text-align:center;padding:60px;color:#3d5940">No credits minted yet.</div>' : '';
+  var lang = document.documentElement.lang || 'en';
+  var isES = (typeof currentLang !== 'undefined' && currentLang === 'es');
+  var txt = {
+    title: isES?'Mercado de Créditos de Carbono':'Carbon Credits Exchange',
+    subtitle: isES?'VERIFICADO ON-CHAIN · SOLAR · UE ETS':'VERIFIED ON-CHAIN · SOLAR · EU ETS COMPLIANT',
+    avail: isES?'DISPONIBLE':'AVAILABLE',
+    co2label: isES?'CO2 EVITADO':'CO2 AVOIDED',
+    energy: isES?'Energía Producida':'Energy Produced',
+    ets: isES?'Valor ETS':'ETS Value',
+    go: isES?'Certificado GO':'GO Certificate',
+    bundle: isES?'PRECIO BUNDLE ETS+GO':'ETS + GO BUNDLE',
+    buy: isES?'COMPRAR CRÉDITO':'BUY CREDIT BUNDLE',
+    explorer: isES?'Ver en Explorer':'View on Explorer',
+    devnet: isES?'SOLO DEMO DEVNET':'DEVNET DEMO ONLY',
+    kg: isES?'kg CO2 Disponible':'kg CO2 Available',
+    batches: isES?'Lotes':'Batches',
+  };
+  var h = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>VOLTCORE Carbon Marketplace</title>';
+  h += '<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">';
+  h += '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#070a08;color:#bdd4bf;font-family:"JetBrains Mono",monospace}';
+  h += 'header{background:rgba(7,10,8,0.95);border-bottom:1px solid #1c2b1e;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0}';
+  h += '.hero{text-align:center;padding:50px 32px 30px;border-bottom:1px solid #1c2b1e}';
+  h += 'h1{font-family:"Syne",sans-serif;font-size:42px;font-weight:800;color:#2dff7f;margin-bottom:8px}';
+  h += '.stats{display:inline-grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#1c2b1e;border:1px solid #1c2b1e;margin-top:20px}';
+  h += '.stat{background:#0c110d;padding:18px 24px;text-align:center}';
+  h += '.stat-v{font-size:24px;font-weight:700;color:#2dff7f;margin-bottom:4px}';
+  h += '.stat-l{font-size:9px;letter-spacing:2px;color:#3d5940}';
+  h += '.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:30px}';
+  h += '</style></head><body>';
+  h += '<header><div style="font-family:Syne,sans-serif;font-weight:800;font-size:16px;color:#2dff7f">VOLTCORE '+txt.title.toUpperCase()+'</div>';
+  h += '<div style="font-size:9px;letter-spacing:2px;color:#3d5940">DEVNET · EU ETS · SOLANA</div></header>';
+  h += '<div class="hero"><h1>'+txt.title+'</h1><p style="font-size:11px;letter-spacing:2px;color:#3d5940">'+txt.subtitle+'</p>';
+  h += '<div class="stats">';
+  h += '<div class="stat"><div class="stat-v">'+totalKg.toFixed(2)+'</div><div class="stat-l">kg CO2</div></div>';
+  h += '<div class="stat"><div class="stat-v">'+credits.length+'</div><div class="stat-l">Batches</div></div>';
+  h += '<div class="stat"><div class="stat-v">65/t</div><div class="stat-l">EU ETS</div></div>';
+  h += '<div class="stat"><div class="stat-v">2.50</div><div class="stat-l">GO /MWh</div></div>';
+  h += '</div></div>';
+  h += '<div style="max-width:1100px;margin:0 auto;padding:40px 32px">';
+  h += '<div class="grid">'+rows+'</div>'+empty;
+  h += '<div style="text-align:center;font-size:9px;color:#3d5940;letter-spacing:1px;padding:20px;border-top:1px solid #1c2b1e;line-height:2">DEVNET DEMO ONLY · Not financial advice</div>';
+  h += '<div id="toast" style="display:none;position:fixed;bottom:24px;right:24px;background:#0c110d;border:1px solid #2dff7f;color:#2dff7f;padding:14px 20px;font-size:10px;letter-spacing:1px;z-index:100"></div>';
+  h += '<scr'+'ipt>';
+  h += 'function handleBuy(idx,community,etsVal,goVal){';
+  h += 'var btn=document.getElementById("buybtn"+idx);';
+  h += 'if(!btn||btn.disabled)return;';
+  h += 'btn.textContent="Processing...";btn.disabled=true;btn.style.background="#555";';
+  h += 'setTimeout(function(){';
+  h += '  btn.textContent="Sold!";btn.style.background="#3d5940";';
+  h += '  var card=btn.parentElement;if(card){card.style.opacity="0.5";}';
+  h += '  var total=(parseFloat(etsVal)+parseFloat(goVal)).toFixed(4);';
+  h += '  var t=document.getElementById("toast");';
+  h += '  if(t){t.textContent="Credit sold for "+total;t.style.display="block";setTimeout(function(){t.style.display="none"},4000);}';
+  h += '  try{if(window.opener&&window.opener.postMessage)window.opener.postMessage({type:"carbon_sold",community:community,amount:parseFloat(etsVal)+parseFloat(goVal)},"*");}catch(e){}';
+  h += '},1200);';
+  h += '}';
+  h += '</'+'script>';
+  h += '</div></body></html>';
+  w.document.write(h);
+  w.document.close();
+}
+
+// ─────────────────────────────────────────────
+// LANG TOGGLE
+// ─────────────────────────────────────────────
+const TRANSLATIONS = {
+  en: {
+    nav_dashboard:'Dashboard',nav_financials:'Financials',nav_carbon:'Carbon',
+    nav_insurance:'Insurance',nav_regulatory:'Regulatory',nav_create:'+ New Community',nav_escrow:'Escrow',
+    protocol_overview:'Protocol Overview',active_communities:'Active Communities',
+    protocol_intel:'Protocol Intelligence',financial_transparency:'Financial Transparency',
+    carbon_impact:'Carbon & Environmental Impact',parametric_insurance:'Parametric Insurance',
+    regulatory_compliance:'Regulatory Compliance',create_community:'Create New Community',
+    kpi_communities:'Communities',kpi_produced:'Energy Produced',kpi_grid_cost:'Grid Import Cost',
+    kpi_escrow:'Escrow Fund',kpi_co2:'CO₂ Avoided',kpi_debt:'Debt Repaid',
+    active_solana:'Active on Solana',night_hours:'Night/deficit hours',of_infra:'Of infrastructure',
+    oracle_title:'REE Price Oracle',escrow_fund:'Green Escrow Fund',settlement_log:'Settlement Log',
+    total_contrib:'TOTAL CONTRIBUTED',yield_earned:'YIELD EARNED',carbon_rev:'CARBON + GOs',
+    insurance_reserve:'INSURANCE FUND',grid_cost_total:'GRID IMPORT COST',
+    co2_avoided:'CO₂ Avoided',carbon_credits:'Carbon Credits',go_certs:'Guarantees of Origin',
+    vs_grid:'vs Spanish grid average 180g/kWh',ets_price:'EU Emission Trading System',
+    go_directive:'EU Directive 2009/28/EC',carbon_reg:'Carbon Regulatory Framework',
+    fund_balance:'Fund Balance',premiums_collected:'Premiums Collected',payouts_made:'Payouts Made',
+    how_parametric:'How Parametric Insurance Works',
+    trigger_cond:'TRIGGER CONDITION',auto_payout:'AUTOMATIC PAYOUT',premium_model:'PREMIUM MODEL',
+    trigger_desc:'Production falls below 70% of expected monthly average. Oracle verifies automatically. No human assessment needed.',
+    auto_desc:'Smart contract reads oracle data and pays immediately. No claims process, no waiting, no paperwork.',
+    premium_desc:'2% of daily revenue auto-funded. Insurance pool is self-sustaining and community-owned.',
+    spain_framework:'Spain Legal Framework',eu_framework:'EU Legal Framework',
+    rev_alloc:'Revenue Allocation',daily_cost:'Daily Cost Breakdown',
+    member_trans:'Member Transparency — All Communities',escrow_proj:'Escrow Fund — 5 Year Projection',
+    minted_credits:'Minted Carbon Credits — On-Chain Registry',
+    no_comm:'NO COMMUNITIES YET',deploy_first:'Deploy your first energy community to get started',
+    new_comm_btn:'+ NEW COMMUNITY',
+    s1_title:'Community Basics',s1_sub:'Name your community and choose its energy model',
+    s2_title:'Solar Installation',s3_title:'Cost Estimation',s4_title:'Community Members',
+    s5_title:'Financial Projection',
+    step_basics:'Basics',step_solar:'Solar',step_costs:'Costs',
+    step_members:'Members',step_proj:'Projection',step_deploy:'Deploy',
+    community_name:'Community Name',
+    energy_type:'Energy Type',
+    location:'Location in Spain',
+    n_households:'Number of Households',
+    ref_price:'Grid Reference Price (€/kWh)',
+    battery_kwh:'Battery Capacity (kWh)',
+    panel_count:'Number of Panels',
+    panel_wp:'Panel Power (Wp)',
+    orientation:'Orientation',
+    tilt:'Tilt (°)',
+    install_year:'Installation Year',
+    degradation:'Panel Degradation (%/yr)',
+    panel_cost:'Panel Cost (€/Wp)',
+    install_cost:'Installation Cost (€/kWp)',
+    battery_cost:'Battery Cost (€/kWh)',
+    maintenance:'Annual Maintenance (%)',
+    bank_interest:'Bank Loan Interest (%/yr)',
+    loan_years:'Loan Duration (years)',
+  },
+  es: {
+    nav_dashboard:'Panel',nav_financials:'Finanzas',nav_carbon:'Carbono',
+    nav_insurance:'Seguro',nav_regulatory:'Regulación',nav_create:'+ Nueva Comunidad',nav_escrow:'Escrow',
+    protocol_overview:'Visión General',active_communities:'Comunidades Activas',
+    protocol_intel:'Inteligencia del Protocolo',financial_transparency:'Transparencia Financiera',
+    carbon_impact:'Impacto de Carbono y Medioambiente',parametric_insurance:'Seguro Paramétrico',
+    regulatory_compliance:'Cumplimiento Normativo',create_community:'Crear Nueva Comunidad',
+    kpi_communities:'Comunidades',kpi_produced:'Energía Producida',kpi_grid_cost:'Coste de Red',
+    kpi_escrow:'Fondo Escrow',kpi_co2:'CO₂ Evitado',kpi_debt:'Deuda Pagada',
+    active_solana:'Activas en Solana',night_hours:'Horas nocturnas / déficit',of_infra:'De la infraestructura',
+    oracle_title:'Oráculo Precio REE',escrow_fund:'Fondo Escrow Verde',settlement_log:'Registro de Liquidaciones',
+    total_contrib:'TOTAL APORTADO',yield_earned:'RENDIMIENTO',carbon_rev:'CARBONO + GOs',
+    insurance_reserve:'FONDO DE SEGURO',grid_cost_total:'COSTE IMPORTACIÓN RED',
+    co2_avoided:'CO₂ Evitado',carbon_credits:'Créditos de Carbono',go_certs:'Garantías de Origen',
+    vs_grid:'vs red española media 180g/kWh',ets_price:'Sistema Europeo de Comercio de Emisiones',
+    go_directive:'Directiva UE 2009/28/CE',carbon_reg:'Marco Regulatorio de Carbono',
+    fund_balance:'Saldo del Fondo',premiums_collected:'Primas Recaudadas',payouts_made:'Indemnizaciones',
+    how_parametric:'Cómo Funciona el Seguro Paramétrico',
+    trigger_cond:'CONDICIÓN DE ACTIVACIÓN',auto_payout:'PAGO AUTOMÁTICO',premium_model:'MODELO DE PRIMA',
+    trigger_desc:'La producción cae por debajo del 70% de la media mensual esperada. El oráculo verifica automáticamente. Sin intervención humana.',
+    auto_desc:'El contrato inteligente paga al instante. Sin reclamaciones, sin esperas, sin papeleo.',
+    premium_desc:'2% de los ingresos diarios auto-financiado. Fondo de seguro de propiedad comunitaria.',
+    spain_framework:'Marco Legal Español',eu_framework:'Marco Legal Europeo',
+    rev_alloc:'Asignación de Ingresos',daily_cost:'Desglose de Costes Diarios',
+    member_trans:'Transparencia de Miembros — Todas las Comunidades',escrow_proj:'Fondo Escrow — Proyección 5 Años',
+    minted_credits:'Créditos de Carbono Acuñados — Registro On-Chain',
+    no_comm:'SIN COMUNIDADES',deploy_first:'Despliega tu primera comunidad energética para empezar',
+    new_comm_btn:'+ NUEVA COMUNIDAD',
+    s1_title:'Datos Básicos',s1_sub:'Nombra tu comunidad y elige su modelo energético',
+    s2_title:'Instalación Solar',s3_title:'Estimación de Costes',s4_title:'Miembros de la Comunidad',
+    s5_title:'Proyección Financiera',
+    step_basics:'Básicos',step_solar:'Solar',step_costs:'Costes',
+    step_members:'Miembros',step_proj:'Proyección',step_deploy:'Desplegar',
+    community_name:'Nombre de la Comunidad',
+    energy_type:'Tipo de Energía',
+    location:'Ubicación en España',
+    n_households:'Número de Hogares',
+    ref_price:'Precio de Referencia Red (€/kWh)',
+    battery_kwh:'Capacidad Batería (kWh)',
+    panel_count:'Número de Paneles',
+    panel_wp:'Potencia Panel (Wp)',
+    orientation:'Orientación',
+    tilt:'Inclinación (°)',
+    install_year:'Año de Instalación',
+    degradation:'Degradación Panel (%/año)',
+    panel_cost:'Coste Panel (€/Wp)',
+    install_cost:'Coste Instalación (€/kWp)',
+    battery_cost:'Coste Batería (€/kWh)',
+    maintenance:'Mantenimiento Anual (%)',
+    bank_interest:'Interés Préstamo Banco (%/año)',
+    loan_years:'Duración Préstamo (años)',
+  }
+};
+let currentLang = 'en';
+function applyLang() {
+  const t=TRANSLATIONS[currentLang]||TRANSLATIONS.en;
+  const pages=['dashboard','financials','carbon','insurance','regulatory','create'];
+  // All elements with data-i18n (includes nav tabs)
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(t[k])el.textContent=t[k];});
+}
+function setLang(l) {
+  currentLang=l;
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.lang-btn[data-lang="'+l+'"]')?.classList.add('active');
+  applyLang();
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(typeof solanaWeb3!=='undefined'){window.solanaWeb3=solanaWeb3;console.log('✅ solanaWeb3 loaded');}
+
+  // Load persisted communities from localStorage
+  try {
+    const saved = localStorage.getItem('voltcore_communities');
+    if(saved) {
+      const loaded = JSON.parse(saved);
+      communities = loaded.map(c => ({
+        ...c, prod:0, self:0, excess:0, gridImport:0,
+        cloudFactor:1, elevation:0, sunrise:6.5, sunset:20.5,
+        expanded: false,
+      }));
+      console.log('✅ Loaded', communities.length, 'communities from storage');
+    }
+    const savedCredits = localStorage.getItem('voltcore_carbon_credits');
+    if(savedCredits) { carbonCreditsLog = JSON.parse(savedCredits); renderCarbonCredits(); }
+    const savedEscrow = localStorage.getItem('voltcore_escrow_log');
+    if(savedEscrow) { escrowLog = JSON.parse(savedEscrow); }
+  } catch(e) { console.warn('Storage load error:', e); }
+  if(typeof solanaWeb3==='undefined'){console.warn('⚠ solanaWeb3 not found');window.solanaWeb3=null;}
+
+  const _phantom=window.phantom?.solana||window.solana;
+  if(_phantom?.isPhantom&&_phantom.isConnected){
+    _phantom.connect({onlyIfTrusted:true}).then(resp=>{
+      walletPubkey=resp.publicKey.toString();window._phantom=_phantom;
+      const btn=document.getElementById('wallet-btn');
+      btn.textContent=walletPubkey.slice(0,4)+'...'+walletPubkey.slice(-4);btn.classList.add('connected');
+    }).catch(()=>{});
+  }
+
+  document.querySelectorAll('.nav-tab[data-page]').forEach(btn=>{btn.addEventListener('click',()=>showPage(btn.dataset.page));});
+  document.querySelectorAll('.lang-btn[data-lang]').forEach(btn=>{btn.addEventListener('click',()=>setLang(btn.dataset.lang));});
+  document.getElementById('wallet-btn').addEventListener('click',connectWallet);
+  document.getElementById('time-mode-btn').addEventListener('click',toggleTimeMode);
+  document.getElementById('hour-slider').addEventListener('input',e=>onHourSlider(e.target.value));
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el){const type=el.id.replace('modal-','');closeModal(type);}});});
+
+  // Listen for carbon credit sales from marketplace window
+  window.addEventListener('message', function(e) {
+    if(e.data && e.data.type==='carbon_sold') {
+      const saleEur = e.data.amount;
+      const comm = e.data.community;
+      // Add to first matching community escrow
+      const c = communities.find(function(c){return c.name===comm;});
+      if(c) { c.escrow+=saleEur; saveCommunities(); }
+      recordEscrowYield(comm, saleEur, 'CARBON_SALE');
+      addLog('CARBON','Credit sold: €'+saleEur.toFixed(4)+' added to '+comm+' escrow');
+      try { localStorage.setItem('voltcore_carbon_credits', JSON.stringify(carbonCreditsLog)); } catch(e){}
+    }
+  });
+
+  const globals={showPage,applyLang,setLang,renderEscrowPage,saveCommunities,generateSolanaKeypair,regenWallet,connectWallet,toggleTimeMode,onHourSlider,goStep,validateStep,onTypeChange,updateAllEstimates,updateCostEstimate,addMember,removeMember,updateMembersTotal,renderFullProjection,startDeploy,onDeployComplete,toggleCommunity,deleteCommunity,renderFinancials,addLog,tick,openModal,closeModal,execSettle,execEscrow,execCarbon,execYield,execAddMember,openCarbonMarketplace,renderCarbonCredits};
+  Object.assign(window,globals);
+
+  for(let i=0;i<24;i++) priceHistory.push(getOracle(new Date(Date.now()-i*3600000)));
+  priceHistory.reverse();
+  tick();
+  updateAllEstimates();
+  document.querySelectorAll('.m-inv').forEach(i=>i.addEventListener('input',updateMembersTotal));
+
+  // Physics tick every 3s
+  setInterval(tick,3000);
+});
+
+})();
+</script>
+</body>
+</html>
