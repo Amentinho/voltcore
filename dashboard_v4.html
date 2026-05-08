@@ -1134,7 +1134,7 @@ function removeMemberFromCommunity(communityIdx, memberIdx) {
 }
 
 function toggleCommunity(idx){communities[idx].expanded=!communities[idx].expanded;renderCommunityList();}
-function deleteCommunity(idx){if(confirm(`Remove "${communities[idx].name}"?`)){communities.splice(idx,1);renderCommunityList();}}
+function deleteCommunity(idx){if(confirm('Remove "'+communities[idx].name+'" from dashboard? This only removes the local entry — the on-chain account remains on Solana.')){communities.splice(idx,1);saveCommunities();renderCommunityList();}}
 
 // ─────────────────────────────────────────────
 // TIME CONTROLS
