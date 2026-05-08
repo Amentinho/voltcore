@@ -374,7 +374,7 @@ select option{background:var(--surface2);}
     <button class="modal-close" onclick="closeModal('yield')">✕</button>
     <div class="modal-title">💸 Distribute Yield</div>
     <div class="modal-info" id="yield-info">Distributes yield per member. Requires record_settlement to fund on-chain treasury first.</div>
-    <div class="modal-field"><label>Total to Distribute (lamports, split by share)</label><input type="number" id="yield-amount" value="1000000" min="1000"></div>
+    <div class="modal-field"><label>Total to Distribute (lamports, split by share)</label><input type="number" id="yield-amount" value="5000000" min="890880"></div>
     <div class="modal-field">
       <label>Distribute To</label>
       <select id="yield-member">
@@ -400,10 +400,10 @@ select option{background:var(--surface2);}
       <label>Member Wallet Address</label>
       <div style="display:flex;gap:6px">
         <input type="text" id="member-wallet" placeholder="Solana pubkey..." style="flex:1">
-        <button onclick="document.getElementById('member-wallet').value=generateSolanaKeypair()" style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:10px;border-radius:2px;white-space:nowrap;flex-shrink:0">↻ Generate</button>
+        <button onclick="var k=generateSolanaKeypair();document.getElementById('member-wallet').value=k;this.textContent='✓ New';setTimeout(function(){document.getElementById('gen-wallet-btn')?document.getElementById('gen-wallet-btn').textContent='↻ Generate':null},1500);" id="gen-wallet-btn" style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:10px;border-radius:2px;white-space:nowrap;flex-shrink:0">↻ Generate</button>
       </div>
     </div>
-    <div class="modal-field"><label>Investment (SOL)</label><input type="number" id="member-investment-sol" value="3" step="0.1" min="0.001"></div>
+    <div class="modal-field"><label>Investment (€ — same units as community members)</label><input type="number" id="member-investment-sol" value="3000" step="100" min="100"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('member')">Cancel</button>
       <button class="btn-confirm" id="member-confirm" onclick="execAddMember()">Add Member</button>
@@ -657,7 +657,7 @@ select option{background:var(--surface2);}
         var defaults=[['Ana García','3000'],['Marc Puig','3000']];
         var chars='ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz123456789';
         defaults.forEach(function(d){
-          var wallet=Array.from({length:44},function(){return chars[Math.floor(Math.random()*chars.length)]}).join('');
+          var wallet=generateSolanaKeypair();
           var div=document.createElement('div');
           div.className='member-input-row';div.style.cssText='flex-wrap:wrap;gap:6px;';
           div.innerHTML='<input type="text" placeholder="Member name" class="m-name" value="'+d[0]+'" style="flex:1;min-width:120px"/>'+
@@ -946,6 +946,15 @@ function tick() {
     c.escrow+=escrowContr+yld;
     c.co2+=co2;
 
+    // Accumulate per-member escrow based on their CURRENT share
+    if(!c.memberEscrows) c.memberEscrows=c.members.map(()=>0);
+    while(c.memberEscrows.length<c.members.length) c.memberEscrows.push(0);
+    const totalInvTick=c.investments.reduce((a,b)=>a+b,0)||1;
+    c.members.forEach((_,i)=>{
+      const sh=c.investments[i]/totalInvTick;
+      c.memberEscrows[i]+=(escrowContr+yld)*sh;
+    });
+
     globalEscrowYield+=yld;
     globalCarbonRev+=(co2/1000*65)+(prod.kwh/1000*2.5);
     globalInsBalance+=insP;
@@ -1085,7 +1094,8 @@ function renderCommunityList() {
             const removeBtn=canRemove
               ? `<button onclick="event.stopPropagation();removeMemberFromCommunity(${idx},${i})" style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);padding:2px 6px;font-family:var(--mono);font-size:8px;border-radius:2px;cursor:pointer;margin-left:4px">✕</button>`
               : `<button onclick="event.stopPropagation();alert('${m} still has €'+${memberDebt.toFixed(2)}+' debt. Repay before removing.')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);padding:2px 6px;font-family:var(--mono);font-size:8px;border-radius:2px;cursor:pointer;margin-left:4px" title="Has debt — cannot remove">🔒</button>`;
-            return`<div class="member-mini"><div class="member-mini-name">${m}${removeBtn}</div><div class="member-mini-bar"><div class="member-mini-fill" style="width:${Math.min(100,share*100)}%"></div></div><div class="member-mini-val">€${f(c.escrow*share,2)}</div></div>`;
+            const memberEscrowAmt = (c.memberEscrows&&c.memberEscrows[i]!=null) ? c.memberEscrows[i] : c.escrow*share;
+            return`<div class="member-mini"><div class="member-mini-name">${m}${removeBtn}</div><div class="member-mini-bar"><div class="member-mini-fill" style="width:${Math.min(100,share*100)}%"></div></div><div class="member-mini-val">€${f(memberEscrowAmt,2)}</div></div>`;
             }).join('')}
           </div>
         </div>
@@ -1210,17 +1220,20 @@ function openModal(type, idx) {
     const preview = document.getElementById('yield-members-preview');
     if(preview) {
       const totalInv = c.investments.reduce((a,b)=>a+b,0)||1;
+      const totalAcc = c.memberEscrows ? c.memberEscrows.reduce((a,b)=>a+(b||0),0)||1 : c.escrow||1;
       preview.innerHTML = c.members.map((m,i)=>{
         const sh=c.investments[i]/totalInv;
-        return m+' → €'+(c.escrow*sh).toFixed(4)+' ('+( sh*100).toFixed(1)+'%)';
+        const earned=(c.memberEscrows&&c.memberEscrows[i]!=null)?c.memberEscrows[i]:c.escrow*sh;
+        const ratio=totalAcc>0?earned/totalAcc:sh;
+        return m+' → €'+earned.toFixed(2)+' accumulated ('+( ratio*100).toFixed(1)+'% of distribution)';
       }).join('<br>');
     }
   }
   if(type==='member') {
     document.getElementById('member-info').textContent = 'Add a new member to "'+c.name+'" (currently '+c.members.length+'/20 members).';
     document.getElementById('member-name').value = '';
+    document.getElementById('member-investment-sol').value = '3000';
     document.getElementById('member-wallet').value = generateSolanaKeypair();
-    document.getElementById('member-investment-sol').value = '3';
   }
 
   // Clear previous result
@@ -1491,16 +1504,28 @@ async function execYield() {
     let totalLamports=0;
     const payouts=[];
 
+    const RENT_MINIMUM=890880; // minimum lamports for rent-exempt empty account
     for(const mIdx of targetMembers) {
       const walletStr=(c.memberWallets||[])[mIdx];
-      // Skip if no valid wallet or if it's the same as authority (self-payment)
-      if(!walletStr||walletStr.length<32) continue;
+      // Use connected wallet as fallback if no valid member wallet
       let memberWallet;
-      try { memberWallet=new PublicKey(walletStr); } catch(e){ continue; }
+      if(!walletStr||walletStr.length<32) {
+        memberWallet=new PublicKey(walletPubkey); // fallback to authority
+      } else {
+        try { memberWallet=new PublicKey(walletStr); }
+        catch(e){ memberWallet=new PublicKey(walletPubkey); } // fallback on invalid key
+      }
 
       const share=c.investments[mIdx]/totalInv;
-      const memberLamports=Math.round(amountPerMember*share);
-      if(memberLamports<1) continue;
+      if(share<=0) continue;
+      // Use accumulated escrow ratio for distribution (not just current share)
+      // Members who joined later have less accumulated escrow → get less
+      const memberAccumulated = (c.memberEscrows&&c.memberEscrows[mIdx]!=null) ? c.memberEscrows[mIdx] : c.escrow*share;
+      const totalAccumulated = c.memberEscrows ? c.memberEscrows.reduce((a,b)=>a+(b||0),0) : c.escrow;
+      const escrowRatio = totalAccumulated > 0 ? memberAccumulated/totalAccumulated : share;
+      let memberLamports=Math.round(amountPerMember*escrowRatio);
+      // Ensure minimum rent-exempt amount so transfer doesn't fail
+      if(memberLamports<RENT_MINIMUM) memberLamports=RENT_MINIMUM;
 
       // Raw system transfer instruction
       const transferData=new Uint8Array(12);
@@ -1520,7 +1545,9 @@ async function execYield() {
     }
 
     if(tx.instructions.length===0) {
-      throw new Error('No members with valid wallets found. Add member wallets via "+ New Community" form or "Add Member" action.');
+      // Build a list of what was skipped
+      const skipped=payouts.filter(p=>p.skipped).map(p=>p.name).join(', ');
+      throw new Error('No transfers built. '+(skipped?'Skipped (no wallet): '+skipped+'. ':'')+'Enter real Solana wallet addresses in the member form.');
     }
 
     const sig=await signAndSend(tx);
@@ -1530,10 +1557,12 @@ async function execYield() {
     c.escrow=Math.max(0,c.escrow-totalEur);
     saveCommunities();
 
-    const summary=payouts.map(p=>p.name+' ('+p.lamports+'L)').join(', ');
-    showModalResult('yield','✅ Yield sent to '+payouts.length+' member(s)! Total: '+(totalLamports/1e9).toFixed(6)+' SOL | '+sig.slice(0,16)+'...',true,sig);
-    setActionStatus(idx,'💸 '+payouts.length+' members paid | '+(totalLamports/1e9).toFixed(6)+' SOL');
-    addLog('YIELD','Distributed '+(totalLamports/1e9).toFixed(6)+' SOL → '+payouts.length+' members | '+sig.slice(0,12)+'...');
+    const paid=payouts.filter(p=>!p.skipped);
+    const skipped=payouts.filter(p=>p.skipped);
+    const skipNote=skipped.length>0?' ('+skipped.length+' skipped — no wallet)':'';
+    showModalResult('yield','✅ Sent '+(totalLamports/1e9).toFixed(6)+' SOL to '+paid.length+' member(s)'+skipNote+' | '+sig.slice(0,16)+'...',true,sig);
+    setActionStatus(idx,'💸 '+paid.length+' paid | '+(totalLamports/1e9).toFixed(6)+' SOL');
+    addLog('YIELD','Distributed '+(totalLamports/1e9).toFixed(6)+' SOL → '+paid.length+' members | '+sig.slice(0,12)+'...');
   } catch(e) {
     showModalResult('yield','❌ '+e.message.slice(0,150),false);
     setActionStatus(idx,'❌ Yield failed','var(--red)');
@@ -1557,8 +1586,8 @@ async function execAddMember() {
 
   const memberName=document.getElementById('member-name').value.trim()||'Member';
   const memberWalletStr=document.getElementById('member-wallet').value.trim();
-  const investmentSOL=parseFloat(document.getElementById('member-investment-sol').value)||3;
-  const investmentLamports=Math.round(investmentSOL*1e9);
+  const investmentEUR=parseFloat(document.getElementById('member-investment-sol').value)||3000;
+  const investmentLamports=Math.round(investmentEUR*1e6); // store as micro-EUR like community
 
   try {
     if(c.members.length>=20) throw new Error('Community is full (max 20 members)');
@@ -1579,9 +1608,11 @@ async function execAddMember() {
 
     // Update local state
     c.members.push(memberName);
-    c.investments.push(investmentSOL);
+    c.investments.push(investmentEUR);
     if(!c.memberWallets) c.memberWallets=[];
     c.memberWallets.push(memberWalletStr);
+    if(!c.memberEscrows) c.memberEscrows=c.members.map(()=>0);
+    c.memberEscrows.push(0); // new member starts at 0 escrow
     saveCommunities();
 
     showModalResult('member','✅ '+memberName+' added on-chain! PDA: '+memberPDA.toString().slice(0,20)+'... Tx: '+sig.slice(0,16)+'...',true,sig);
@@ -1810,11 +1841,26 @@ function updateCostEstimate(est) {
 }
 
 function generateSolanaKeypair() {
-  const chars='ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz123456789';
-  return Array.from({length:44},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+  // Generate cryptographically random 32 bytes, base58-encode to valid Solana pubkey
+  const ALPHA = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  // Ensure first byte is never 0 (avoids leading '1' padding issues)
+  bytes[0] = Math.max(1, bytes[0]);
+  let num = BigInt('0x' + Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(''));
+  let enc = '';
+  const base = BigInt(58);
+  while(num > 0n) { enc = ALPHA[Number(num % base)] + enc; num = num / base; }
+  // Pad/trim to exactly 44 chars
+  while(enc.length < 44) enc = enc + ALPHA[Math.floor(Math.random()*58)];
+  return enc.slice(0, 44);
+}
+
+// Keep async version as alias (some callers use it)
+function generateSolanaKeypairAsync() {
+  return Promise.resolve(generateSolanaKeypair());
 }
 function regenWallet(btn) {
-  // btn is the ↻ button, prev sibling is the wallet input
   const walletInput = btn.previousElementSibling;
   if(walletInput && walletInput.classList.contains('m-wallet')) {
     walletInput.value = generateSolanaKeypair();
@@ -1944,7 +1990,7 @@ async function startDeploy(){
   document.getElementById('deploy-details').innerHTML=`Community: ${name} | Type: ${type} | Location: ${loc}<br>System: ${Math.round(panels*wp/100)/10} kWp | Members: ${members.length} | Investment: €${f(totalInv,0)}<br>Network: Solana Devnet`;
 
   const memberWallets=[...document.querySelectorAll('.m-wallet')].map(i=>i.value||walletPubkey);
-  window._pendingCommunity={id:communityPDA.slice(0,16).toLowerCase(),name,type,location:loc,panels,panelWp:wp,households,battery:batteryKwh,totalDebt:totalInv,totalInvestment:totalInv,refPrice,escrow:0,totalRepaid:0,co2:0,gridImportCost:0,gridImportKwh:0,prod:0,self:0,excess:0,gridImport:0,batSoc:type==='OFF_GRID'?75:0,cloudFactor:1,elevation:0,sunrise:6.5,sunset:20.5,members,investments:invs,memberWallets,onchain:{programId:PROGRAM_ID,communityPDA,settlementCount:0,authority:walletPubkey,txSig},expanded:false};
+  window._pendingCommunity={id:communityPDA.slice(0,16).toLowerCase(),name,type,location:loc,panels,panelWp:wp,households,battery:batteryKwh,totalDebt:totalInv,totalInvestment:totalInv,refPrice,escrow:0,totalRepaid:0,co2:0,gridImportCost:0,gridImportKwh:0,prod:0,self:0,excess:0,gridImport:0,batSoc:type==='OFF_GRID'?75:0,cloudFactor:1,elevation:0,sunrise:6.5,sunset:20.5,members,investments:invs,memberWallets,memberEscrows:invs.map(()=>0),onchain:{programId:PROGRAM_ID,communityPDA,settlementCount:0,authority:walletPubkey,txSig},expanded:false};
 }
 
 function saveCommunities() {
@@ -1954,7 +2000,7 @@ function saveCommunities() {
       id:c.id, name:c.name, type:c.type, location:c.location,
       panels:c.panels, panelWp:c.panelWp, households:c.households, battery:c.battery,
       totalDebt:c.totalDebt, totalInvestment:c.totalInvestment, refPrice:c.refPrice,
-      escrow:c.escrow, totalRepaid:c.totalRepaid, co2:c.co2,
+      escrow:c.escrow, totalRepaid:c.totalRepaid, co2:c.co2, memberEscrows:c.memberEscrows||[],
       gridImportCost:c.gridImportCost, gridImportKwh:c.gridImportKwh, batSoc:c.batSoc,
       members:c.members, investments:c.investments, memberWallets:c.memberWallets||[],
       onchain:c.onchain, expanded:false,
@@ -2272,6 +2318,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         ...c, prod:0, self:0, excess:0, gridImport:0,
         cloudFactor:1, elevation:0, sunrise:6.5, sunset:20.5,
         expanded: false,
+        memberEscrows: c.memberEscrows || c.members.map(()=>0),
       }));
       console.log('✅ Loaded', communities.length, 'communities from storage');
     }
