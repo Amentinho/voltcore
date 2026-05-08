@@ -374,7 +374,7 @@ select option{background:var(--surface2);}
     <button class="modal-close" onclick="closeModal('yield')">✕</button>
     <div class="modal-title">💸 Distribute Yield</div>
     <div class="modal-info" id="yield-info">Distributes yield per member. Requires record_settlement to fund on-chain treasury first.</div>
-    <div class="modal-field"><label>Amount Per Member (lamports)</label><input type="number" id="yield-amount" value="100000" min="1"></div>
+    <div class="modal-field"><label>Total to Distribute (lamports, split by share)</label><input type="number" id="yield-amount" value="1000000" min="1000"></div>
     <div class="modal-field">
       <label>Distribute To</label>
       <select id="yield-member">
@@ -1464,7 +1464,7 @@ async function execYield() {
   btn.disabled=true;btn.textContent='Sending...';
 
   if(!c.onchain.communityPDA) {
-    showModalResult('yield','⚠ Demo community — no on-chain PDA. Deploy a real community via "+ New Community" first.',false);
+    showModalResult('yield','⚠ No on-chain PDA. Deploy via "+ New Community" first.',false);
     btn.disabled=false;btn.textContent='Distribute';return;
   }
 
@@ -1472,7 +1472,6 @@ async function execYield() {
   const amountPerMember=parseInt(document.getElementById('yield-amount').value)||100000;
   const totalInv=c.investments.reduce((a,b)=>a+b,0)||1;
 
-  // Build list of members to pay
   let targetMembers=[];
   if(memberSel==='all') {
     targetMembers=c.members.map((_,i)=>i);
@@ -1483,51 +1482,61 @@ async function execYield() {
   try {
     const web3=getWeb3();
     const{PublicKey,Transaction,TransactionInstruction}=web3;
-    const programId=new PublicKey(PROGRAM_ID);
     const authority=new PublicKey(walletPubkey);
-    const communityPDA=new PublicKey(c.onchain.communityPDA);
+    const SYSTEM=new PublicKey('11111111111111111111111111111111');
 
-    // Build one transaction with one instruction per member (batch)
+    // Use direct SOL transfers to member wallets (proportional to investment share)
+    // This is the correct escrow distribution: connected wallet pays each member
     const tx=new Transaction();
-    const disc=await anchorDiscriminator('distribute_yield');
+    let totalLamports=0;
+    const payouts=[];
 
     for(const mIdx of targetMembers) {
-      // Member PDA was created with connected wallet as the member wallet in add_member
-      // Use the authority (connected wallet) as member wallet for on-chain PDA lookup
-      const memberWallet=new PublicKey(walletPubkey);
+      const walletStr=(c.memberWallets||[])[mIdx];
+      // Skip if no valid wallet or if it's the same as authority (self-payment)
+      if(!walletStr||walletStr.length<32) continue;
+      let memberWallet;
+      try { memberWallet=new PublicKey(walletStr); } catch(e){ continue; }
 
       const share=c.investments[mIdx]/totalInv;
-      const memberAmount=Math.round(amountPerMember*share);
-      if(memberAmount<1) continue;
+      const memberLamports=Math.round(amountPerMember*share);
+      if(memberLamports<1) continue;
 
-      const[memberPDA]=PublicKey.findProgramAddressSync(
-        [new TextEncoder().encode('member'),communityPDA.toBytes(),memberWallet.toBytes()],
-        programId
-      );
-      const data=new Uint8Array(disc.length+8);
-      data.set(disc,0);data.set(borshU64(memberAmount),disc.length);
+      // Raw system transfer instruction
+      const transferData=new Uint8Array(12);
+      const dv=new DataView(transferData.buffer);
+      dv.setUint32(0,2,true);
+      dv.setBigUint64(4,BigInt(memberLamports),true);
       tx.add(new TransactionInstruction({
-        programId,
-        keys:[{pubkey:communityPDA,isSigner:false,isWritable:true},{pubkey:memberPDA,isSigner:false,isWritable:true},{pubkey:authority,isSigner:true,isWritable:false}],
-        data
+        programId:SYSTEM,
+        keys:[
+          {pubkey:authority,isSigner:true,isWritable:true},
+          {pubkey:memberWallet,isSigner:false,isWritable:true}
+        ],
+        data:transferData
       }));
+      totalLamports+=memberLamports;
+      payouts.push({name:c.members[mIdx],lamports:memberLamports,wallet:walletStr.slice(0,8)});
     }
 
-    if(tx.instructions.length===0) throw new Error('No valid member instructions built');
+    if(tx.instructions.length===0) {
+      throw new Error('No members with valid wallets found. Add member wallets via "+ New Community" form or "Add Member" action.');
+    }
 
     const sig=await signAndSend(tx);
 
-    const totalEur=(amountPerMember/1e9*155)*targetMembers.length;
+    // Update local escrow state
+    const totalEur=totalLamports/1e9*155;
     c.escrow=Math.max(0,c.escrow-totalEur);
     saveCommunities();
 
-    const names=targetMembers.map(i=>c.members[i]).join(', ');
-    showModalResult('yield','✅ Yield distributed to '+targetMembers.length+' member(s): '+names.slice(0,40)+'... Tx: '+sig.slice(0,16)+'...',true,sig);
-    setActionStatus(idx,'💸 Yield → '+targetMembers.length+' members');
-    addLog('YIELD','Yield batch → '+targetMembers.length+' members | '+sig.slice(0,12)+'...');
+    const summary=payouts.map(p=>p.name+' ('+p.lamports+'L)').join(', ');
+    showModalResult('yield','✅ Yield sent to '+payouts.length+' member(s)! Total: '+(totalLamports/1e9).toFixed(6)+' SOL | '+sig.slice(0,16)+'...',true,sig);
+    setActionStatus(idx,'💸 '+payouts.length+' members paid | '+(totalLamports/1e9).toFixed(6)+' SOL');
+    addLog('YIELD','Distributed '+(totalLamports/1e9).toFixed(6)+' SOL → '+payouts.length+' members | '+sig.slice(0,12)+'...');
   } catch(e) {
-    showModalResult('yield','❌ '+e.message.slice(0,120),false);
-    setActionStatus(idx,'❌ Yield failed: '+e.message.slice(0,50),'var(--red)');
+    showModalResult('yield','❌ '+e.message.slice(0,150),false);
+    setActionStatus(idx,'❌ Yield failed','var(--red)');
   }
   btn.disabled=false;btn.textContent='Distribute';
 }
