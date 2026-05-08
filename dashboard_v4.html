@@ -285,6 +285,14 @@ select option{background:var(--surface2);}
 </head>
 <body>
 
+<!-- CARBON MARKETPLACE MODAL -->
+<div class="modal-overlay" id="modal-marketplace" style="z-index:300;overflow-y:auto">
+  <div style="background:var(--surface);border:1px solid var(--border);width:95%;max-width:1100px;margin:20px auto;padding:28px;position:relative;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeModal('marketplace')" style="position:sticky;top:0;float:right;z-index:10">✕</button>
+    <div id="marketplace-content"></div>
+  </div>
+</div>
+
 <nav>
   <div class="nav-logo">⚡ VOLTCORE</div>
   <div class="nav-tabs">
@@ -386,9 +394,16 @@ select option{background:var(--surface2);}
   <div class="modal">
     <button class="modal-close" onclick="closeModal('member')">✕</button>
     <div class="modal-title">👤 Add Member On-Chain</div>
-    <div class="modal-info" id="member-info">Calls add_member instruction to register a new member PDA with their investment share in the community.</div>
-    <div class="modal-field"><label>Member Wallet Address</label><input type="text" id="member-wallet" placeholder="Solana pubkey..."></div>
-    <div class="modal-field"><label>Investment (lamports)</label><input type="number" id="member-investment" value="3000000000" min="1000000"></div>
+    <div class="modal-info" id="member-info">Register a new member PDA on-chain with their investment share.</div>
+    <div class="modal-field"><label>Member Name</label><input type="text" id="member-name" placeholder="e.g. Maria García"></div>
+    <div class="modal-field">
+      <label>Member Wallet Address</label>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="member-wallet" placeholder="Solana pubkey..." style="flex:1">
+        <button onclick="document.getElementById('member-wallet').value=generateSolanaKeypair()" style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:10px;border-radius:2px;white-space:nowrap;flex-shrink:0">↻ Generate</button>
+      </div>
+    </div>
+    <div class="modal-field"><label>Investment (SOL)</label><input type="number" id="member-investment-sol" value="3" step="0.1" min="0.001"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('member')">Cancel</button>
       <button class="btn-confirm" id="member-confirm" onclick="execAddMember()">Add Member</button>
@@ -553,7 +568,26 @@ select option{background:var(--surface2);}
       <div class="form-grid">
         <div class="field field-full"><label data-i18n="community_name">Community Name</label><input type="text" id="f-name" placeholder="e.g. Valencia Solar Cooperative"/></div>
         <div class="field"><label data-i18n="energy_type">Energy Type</label><select id="f-type" onchange="onTypeChange()"><option value="ON_GRID">On-Grid (connected to national grid)</option><option value="OFF_GRID">Off-Grid (autonomous + battery)</option></select></div>
-        <div class="field"><label data-i18n="location">Location in Spain</label><select id="f-location" onchange="updateAllEstimates()"><option value="barcelona">Barcelona</option><option value="madrid">Madrid</option><option value="sevilla">Sevilla</option><option value="extremadura">Extremadura</option><option value="bilbao">Bilbao</option><option value="valencia">Valencia</option></select></div>
+        <div class="field"><label data-i18n="location">Location in Spain</label><select id="f-location" onchange="updateAllEstimates()">
+  <option value="barcelona">Barcelona</option>
+  <option value="madrid">Madrid</option>
+  <option value="sevilla">Sevilla</option>
+  <option value="valencia">Valencia</option>
+  <option value="bilbao">Bilbao</option>
+  <option value="zaragoza">Zaragoza</option>
+  <option value="malaga">Málaga</option>
+  <option value="murcia">Murcia</option>
+  <option value="palma">Palma de Mallorca</option>
+  <option value="alicante">Alicante</option>
+  <option value="cordoba">Córdoba</option>
+  <option value="valladolid">Valladolid</option>
+  <option value="cadiz">Cádiz</option>
+  <option value="badajoz">Badajoz (Extremadura)</option>
+  <option value="merida">Mérida (Extremadura)</option>
+  <option value="santander">Santander</option>
+  <option value="pamplona">Pamplona</option>
+  <option value="logrono">Logroño</option>
+</select></div>
         <div class="field"><label data-i18n="n_households">Number of Households</label><input type="number" id="f-households" value="10" min="2" max="100" oninput="updateAllEstimates()"/></div>
         <div class="field"><label data-i18n="ref_price">Grid Reference Price (€/kWh)</label><input type="number" id="f-refprice" value="0.22" step="0.01" min="0.05" max="0.60"/></div>
         <div class="field" id="f-battery-field" style="display:none"><label data-i18n="battery_kwh">Battery Capacity (kWh)</label><input type="number" id="f-battery" value="48" step="8" min="8" max="1000" oninput="updateAllEstimates()"/></div>
@@ -722,9 +756,30 @@ const PSH = {
   sevilla:[4.0,5.0,6.3,7.3,8.3,9.0,9.3,8.6,7.1,5.7,4.2,3.7],
   extremadura:[3.8,4.7,6.0,7.0,8.0,8.7,9.0,8.3,6.8,5.4,4.0,3.5],
   bilbao:[2.2,3.0,4.2,5.2,6.0,6.8,7.0,6.3,5.0,3.8,2.6,2.0],
-  valencia:[3.6,4.5,5.8,6.7,7.6,8.3,8.6,7.9,6.5,5.2,3.8,3.3]
+  valencia:[3.6,4.5,5.8,6.7,7.6,8.3,8.6,7.9,6.5,5.2,3.8,3.3],
+  zaragoza:[3.4,4.3,5.6,6.5,7.4,8.1,8.4,7.7,6.3,5.0,3.6,3.1],
+  malaga:[3.9,4.9,6.2,7.1,8.0,8.8,9.1,8.4,7.0,5.6,4.1,3.6],
+  murcia:[3.8,4.8,6.1,7.0,7.9,8.7,9.0,8.3,6.9,5.5,4.0,3.5],
+  palma:[3.3,4.2,5.5,6.4,7.3,8.0,8.3,7.6,6.2,4.9,3.6,3.1],
+  alicante:[3.7,4.6,5.9,6.8,7.7,8.5,8.8,8.1,6.7,5.3,3.9,3.4],
+  cordoba:[3.9,4.9,6.2,7.2,8.2,8.9,9.2,8.5,7.1,5.7,4.2,3.7],
+  valladolid:[3.3,4.2,5.5,6.4,7.3,8.0,8.3,7.6,6.2,4.9,3.5,3.0],
+  cadiz:[4.0,5.0,6.3,7.2,8.2,8.9,9.2,8.5,7.1,5.7,4.2,3.7],
+  badajoz:[3.8,4.8,6.1,7.1,8.0,8.8,9.1,8.4,6.9,5.5,4.0,3.5],
+  merida:[3.8,4.7,6.0,7.0,8.0,8.7,9.0,8.3,6.8,5.4,4.0,3.5],
+  santander:[2.1,2.9,4.1,5.1,5.9,6.7,6.9,6.2,4.9,3.7,2.5,1.9],
+  pamplona:[2.8,3.7,5.0,5.9,6.8,7.5,7.8,7.1,5.7,4.4,3.0,2.5],
+  logrono:[3.0,3.9,5.2,6.1,7.0,7.7,8.0,7.3,5.9,4.6,3.2,2.7]
 };
-const LAT_LNG = {barcelona:[41.38,2.17],madrid:[40.42,-3.70],sevilla:[37.39,-5.99],extremadura:[39.47,-6.37],bilbao:[43.26,-2.93],valencia:[39.47,-0.38]};
+const LAT_LNG = {
+  barcelona:[41.38,2.17],madrid:[40.42,-3.70],sevilla:[37.39,-5.99],
+  extremadura:[39.47,-6.37],bilbao:[43.26,-2.93],valencia:[39.47,-0.38],
+  zaragoza:[41.65,-0.87],malaga:[36.72,-4.42],murcia:[37.98,-1.13],
+  palma:[39.57,2.65],alicante:[38.35,-0.49],cordoba:[37.89,-4.78],
+  valladolid:[41.65,-4.72],cadiz:[36.53,-6.29],badajoz:[38.88,-6.97],
+  merida:[38.92,-6.34],santander:[43.46,-3.81],pamplona:[42.82,-1.64],
+  logrono:[42.47,-2.44]
+};
 const ORIENT_F = {south:1.0,southeast:0.95,southwest:0.95,east:0.8,west:0.8};
 const CLOUD_PROB = {
   barcelona:[0.45,0.40,0.38,0.35,0.30,0.20,0.15,0.18,0.28,0.38,0.42,0.46],
@@ -732,7 +787,20 @@ const CLOUD_PROB = {
   madrid:[0.40,0.35,0.32,0.30,0.25,0.15,0.08,0.10,0.22,0.32,0.38,0.42],
   sevilla:[0.30,0.28,0.25,0.22,0.18,0.08,0.03,0.05,0.15,0.25,0.28,0.32],
   bilbao:[0.60,0.55,0.50,0.48,0.45,0.38,0.32,0.35,0.45,0.55,0.60,0.62],
-  valencia:[0.38,0.33,0.30,0.28,0.22,0.14,0.08,0.10,0.22,0.32,0.38,0.42]
+  valencia:[0.38,0.33,0.30,0.28,0.22,0.14,0.08,0.10,0.22,0.32,0.38,0.42],
+  zaragoza:[0.42,0.38,0.35,0.32,0.28,0.18,0.10,0.12,0.25,0.35,0.40,0.44],
+  malaga:[0.28,0.26,0.23,0.20,0.16,0.07,0.03,0.04,0.13,0.23,0.26,0.30],
+  murcia:[0.30,0.28,0.25,0.22,0.18,0.08,0.04,0.05,0.15,0.25,0.28,0.32],
+  palma:[0.40,0.36,0.33,0.30,0.26,0.16,0.10,0.12,0.24,0.34,0.38,0.42],
+  alicante:[0.33,0.30,0.27,0.24,0.20,0.10,0.05,0.07,0.18,0.28,0.32,0.36],
+  cordoba:[0.32,0.29,0.26,0.23,0.19,0.09,0.04,0.06,0.16,0.26,0.30,0.34],
+  valladolid:[0.45,0.40,0.37,0.34,0.30,0.20,0.12,0.14,0.27,0.37,0.42,0.46],
+  cadiz:[0.28,0.26,0.23,0.20,0.16,0.07,0.03,0.04,0.13,0.23,0.26,0.30],
+  badajoz:[0.35,0.30,0.28,0.25,0.20,0.10,0.05,0.08,0.18,0.28,0.32,0.36],
+  merida:[0.35,0.30,0.28,0.25,0.20,0.10,0.05,0.08,0.18,0.28,0.32,0.36],
+  santander:[0.62,0.57,0.52,0.50,0.47,0.40,0.34,0.37,0.47,0.57,0.62,0.64],
+  pamplona:[0.55,0.50,0.45,0.42,0.38,0.32,0.26,0.28,0.40,0.50,0.55,0.58],
+  logrono:[0.50,0.45,0.42,0.38,0.34,0.26,0.18,0.20,0.34,0.44,0.48,0.52]
 };
 
 function getSunriseSunset(lat,lng,doy) {
@@ -1012,7 +1080,12 @@ function renderCommunityList() {
             <div class="detail-title">👥 MEMBERS</div>
             ${c.members.map((m,i) => {
               const share=c.investments[i]/(c.investments.reduce((a,b)=>a+b,0));
-              return`<div class="member-mini"><div class="member-mini-name">${m}</div><div class="member-mini-bar"><div class="member-mini-fill" style="width:${Math.min(100,share*100)}%"></div></div><div class="member-mini-val">€${f(c.escrow*share,2)}</div></div>`;
+              const memberDebt=c.totalDebt*share;
+            const canRemove=memberDebt<0.01;
+            const removeBtn=canRemove
+              ? `<button onclick="event.stopPropagation();removeMemberFromCommunity(${idx},${i})" style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);padding:2px 6px;font-family:var(--mono);font-size:8px;border-radius:2px;cursor:pointer;margin-left:4px">✕</button>`
+              : `<button onclick="event.stopPropagation();alert('${m} still has €'+${memberDebt.toFixed(2)}+' debt. Repay before removing.')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);padding:2px 6px;font-family:var(--mono);font-size:8px;border-radius:2px;cursor:pointer;margin-left:4px" title="Has debt — cannot remove">🔒</button>`;
+            return`<div class="member-mini"><div class="member-mini-name">${m}${removeBtn}</div><div class="member-mini-bar"><div class="member-mini-fill" style="width:${Math.min(100,share*100)}%"></div></div><div class="member-mini-val">€${f(c.escrow*share,2)}</div></div>`;
             }).join('')}
           </div>
         </div>
@@ -1038,6 +1111,26 @@ function renderCommunityList() {
 
     return`<div class="comm-card ${typeClass}" id="comm-${idx}">${collapsed}${detail}</div>`;
   }).join('');
+}
+
+function removeMemberFromCommunity(communityIdx, memberIdx) {
+  const c = communities[communityIdx];
+  const name = c.members[memberIdx];
+  const totalInv = c.investments.reduce((a,b)=>a+b,0)||1;
+  const share = c.investments[memberIdx]/totalInv;
+  const memberDebt = c.totalDebt * share;
+  if(memberDebt >= 0.01) {
+    alert(name+' has €'+memberDebt.toFixed(2)+' remaining debt.\nThey must repay their share before leaving the community.');
+    return;
+  }
+  if(!confirm('Remove '+name+' from '+c.name+'? Their escrow share (€'+(c.escrow*share).toFixed(2)+') will be redistributed.')) return;
+  // Return their escrow to community pool (redistributed to remaining members)
+  c.members.splice(memberIdx, 1);
+  c.investments.splice(memberIdx, 1);
+  if(c.memberWallets) c.memberWallets.splice(memberIdx, 1);
+  saveCommunities();
+  addLog('MEMBER', name+' removed from '+c.name);
+  renderCommunityList();
 }
 
 function toggleCommunity(idx){communities[idx].expanded=!communities[idx].expanded;renderCommunityList();}
@@ -1124,8 +1217,10 @@ function openModal(type, idx) {
     }
   }
   if(type==='member') {
-    document.getElementById('member-info').textContent = `Add a new member to "${c.name}" (currently ${c.members.length}/20 members).`;
-    document.getElementById('member-wallet').value = walletPubkey || '';
+    document.getElementById('member-info').textContent = 'Add a new member to "'+c.name+'" (currently '+c.members.length+'/20 members).';
+    document.getElementById('member-name').value = '';
+    document.getElementById('member-wallet').value = generateSolanaKeypair();
+    document.getElementById('member-investment-sol').value = '3';
   }
 
   // Clear previous result
@@ -1282,7 +1377,7 @@ async function execEscrow() {
 
   try {
     const web3=getWeb3();
-    const{PublicKey,Transaction,SystemProgram}=web3;
+    const{PublicKey,Transaction,SystemProgram,TransactionInstruction}=web3;
     const communityPDA=new PublicKey(c.onchain.communityPDA);
     const authority=new PublicKey(walletPubkey);
 
@@ -1451,8 +1546,10 @@ async function execAddMember() {
     btn.disabled=false;btn.textContent='Add Member';return;
   }
 
+  const memberName=document.getElementById('member-name').value.trim()||'Member';
   const memberWalletStr=document.getElementById('member-wallet').value.trim();
-  const investmentLamports=parseInt(document.getElementById('member-investment').value)||3000000000;
+  const investmentSOL=parseFloat(document.getElementById('member-investment-sol').value)||3;
+  const investmentLamports=Math.round(investmentSOL*1e9);
 
   try {
     if(c.members.length>=20) throw new Error('Community is full (max 20 members)');
@@ -1472,12 +1569,15 @@ async function execAddMember() {
     const sig=await signAndSend(tx);
 
     // Update local state
-    c.members.push(memberWalletStr.slice(0,8)+'...');
-    c.investments.push(investmentLamports/1e9);
+    c.members.push(memberName);
+    c.investments.push(investmentSOL);
+    if(!c.memberWallets) c.memberWallets=[];
+    c.memberWallets.push(memberWalletStr);
+    saveCommunities();
 
-    showModalResult('member','✅ Member added on-chain! PDA: '+memberPDA.toString().slice(0,20)+'... Tx: '+sig.slice(0,16)+'...',true,sig);
-    setActionStatus(idx,'👤 New member added: '+memberWalletStr.slice(0,8)+'...');
-    addLog('MEMBER','Member added: '+memberWalletStr.slice(0,8)+'... | '+sig.slice(0,12)+'...');
+    showModalResult('member','✅ '+memberName+' added on-chain! PDA: '+memberPDA.toString().slice(0,20)+'... Tx: '+sig.slice(0,16)+'...',true,sig);
+    setActionStatus(idx,'👤 '+memberName+' added to '+c.name);
+    addLog('MEMBER',memberName+' added | '+sig.slice(0,12)+'...');
   } catch(e) {
     showModalResult('member','❌ '+e.message.slice(0,120),false);
     setActionStatus(idx,'❌ Add member failed','var(--red)');
@@ -1928,43 +2028,15 @@ function renderCarbonCredits() {
 }
 
 function openCarbonMarketplace() {
-  var w = window.open('', '_blank', 'width=1200,height=800');
   var credits = carbonCreditsLog;
   var totalKg = credits.reduce(function(a,c){return a+c.kg;}, 0);
-  var rows = '';
-  for(var i=0; i<credits.length; i++) {
-    var c = credits[i];
-    var ets = (c.kg/1000*65).toFixed(4);
-    var go  = (c.kwh/1000*2.5).toFixed(4);
-    var tot = (parseFloat(ets)+parseFloat(go)).toFixed(4);
-    var dt  = new Date(c.timestamp).toLocaleDateString('en-GB');
-    rows += '<div style="background:#0c110d;border:1px solid #1c2b1e;padding:20px;position:relative">';
-    rows += '<div style="position:absolute;top:12px;right:12px;font-size:8px;letter-spacing:1px;padding:2px 8px;border-radius:2px;background:rgba(45,255,127,0.1);color:#2dff7f;border:1px solid #2dff7f">AVAILABLE</div>';
-    rows += '<div style="font-family:Syne,sans-serif;font-size:14px;font-weight:700;color:#2dff7f;margin-bottom:6px">'+c.community+'</div>';
-    rows += '<div style="font-size:9px;color:#3d5940;margin-bottom:8px">'+dt+' · Solar PV</div>';
-    rows += '<div style="font-size:28px;font-weight:700;color:#b060ff;margin:8px 0 2px">'+c.kg+' kg</div>';
-    rows += '<div style="font-size:9px;letter-spacing:1px;color:#3d5940;margin-bottom:10px">CO2 AVOIDED</div>';
-    rows += '<div style="font-size:10px;margin-bottom:12px">';
-    rows += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1c2b1e"><span style="color:#3d5940">Energy Produced</span><span>'+c.kwh+' kWh</span></div>';
-    rows += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1c2b1e"><span style="color:#3d5940">ETS Value</span><span style="color:#b060ff">'+ets+'</span></div>';
-    rows += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1c2b1e"><span style="color:#3d5940">GO Certificate</span><span style="color:#38e8ff">'+go+'</span></div>';
-    rows += '</div>';
-    rows += '<div style="background:#111812;border:1px solid #b060ff;padding:10px;text-align:center;margin-bottom:10px">';
-    rows += '<div style="font-size:22px;font-weight:700;color:#b060ff">'+tot+'</div>';
-    rows += '<div style="font-size:9px;color:#3d5940;letter-spacing:1px">ETS + GO BUNDLE</div>';
-    rows += '</div>';
-    rows += '<button id="buybtn'+i+'" style="width:100%;background:#b060ff;border:none;color:#fff;padding:10px;cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;letter-spacing:2px;border-radius:2px;margin-bottom:8px" onclick="handleBuy('+i+',\''+c.community+'\','+parseFloat(ets)+','+parseFloat(go)+')">BUY CREDIT BUNDLE</button>';
-    rows += '<a href="https://explorer.solana.com/tx/'+c.txSig+'?cluster=devnet" target="_blank" style="font-size:9px;color:#38e8ff;text-decoration:none;display:block;text-align:center">'+txt.explorer+'</a>';
-    rows += '</div>';
-  }
-  var empty = credits.length===0 ? '<div style="text-align:center;padding:60px;color:#3d5940">No credits minted yet.</div>' : '';
-  var lang = document.documentElement.lang || 'en';
   var isES = (typeof currentLang !== 'undefined' && currentLang === 'es');
   var txt = {
     title: isES?'Mercado de Créditos de Carbono':'Carbon Credits Exchange',
-    subtitle: isES?'VERIFICADO ON-CHAIN · SOLAR · UE ETS':'VERIFIED ON-CHAIN · SOLAR · EU ETS COMPLIANT',
+    subtitle: isES?'VERIFICADO ON-CHAIN · SOLAR · UE ETS':'VERIFIED ON-CHAIN · SOLAR · EU ETS',
     avail: isES?'DISPONIBLE':'AVAILABLE',
-    co2label: isES?'CO2 EVITADO':'CO2 AVOIDED',
+    sold: isES?'VENDIDO':'SOLD',
+    co2label: isES?'CO₂ EVITADO':'CO₂ AVOIDED',
     energy: isES?'Energía Producida':'Energy Produced',
     ets: isES?'Valor ETS':'ETS Value',
     go: isES?'Certificado GO':'GO Certificate',
@@ -1972,52 +2044,88 @@ function openCarbonMarketplace() {
     buy: isES?'COMPRAR CRÉDITO':'BUY CREDIT BUNDLE',
     explorer: isES?'Ver en Explorer':'View on Explorer',
     devnet: isES?'SOLO DEMO DEVNET':'DEVNET DEMO ONLY',
-    kg: isES?'kg CO2 Disponible':'kg CO2 Available',
-    batches: isES?'Lotes':'Batches',
+    nocredits: isES?'Sin créditos acuñados aún. Usa "🌿 Acuñar Créditos" en el panel.':'No credits minted yet. Use "🌿 Mint Carbon Credits" on any community.',
   };
-  var h = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>VOLTCORE Carbon Marketplace</title>';
-  h += '<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">';
-  h += '<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#070a08;color:#bdd4bf;font-family:"JetBrains Mono",monospace}';
-  h += 'header{background:rgba(7,10,8,0.95);border-bottom:1px solid #1c2b1e;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0}';
-  h += '.hero{text-align:center;padding:50px 32px 30px;border-bottom:1px solid #1c2b1e}';
-  h += 'h1{font-family:"Syne",sans-serif;font-size:42px;font-weight:800;color:#2dff7f;margin-bottom:8px}';
-  h += '.stats{display:inline-grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#1c2b1e;border:1px solid #1c2b1e;margin-top:20px}';
-  h += '.stat{background:#0c110d;padding:18px 24px;text-align:center}';
-  h += '.stat-v{font-size:24px;font-weight:700;color:#2dff7f;margin-bottom:4px}';
-  h += '.stat-l{font-size:9px;letter-spacing:2px;color:#3d5940}';
-  h += '.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:30px}';
-  h += '</style></head><body>';
-  h += '<header><div style="font-family:Syne,sans-serif;font-weight:800;font-size:16px;color:#2dff7f">VOLTCORE '+txt.title.toUpperCase()+'</div>';
-  h += '<div style="font-size:9px;letter-spacing:2px;color:#3d5940">DEVNET · EU ETS · SOLANA</div></header>';
-  h += '<div class="hero"><h1>'+txt.title+'</h1><p style="font-size:11px;letter-spacing:2px;color:#3d5940">'+txt.subtitle+'</p>';
-  h += '<div class="stats">';
-  h += '<div class="stat"><div class="stat-v">'+totalKg.toFixed(2)+'</div><div class="stat-l">kg CO2</div></div>';
-  h += '<div class="stat"><div class="stat-v">'+credits.length+'</div><div class="stat-l">Batches</div></div>';
-  h += '<div class="stat"><div class="stat-v">65/t</div><div class="stat-l">EU ETS</div></div>';
-  h += '<div class="stat"><div class="stat-v">2.50</div><div class="stat-l">GO /MWh</div></div>';
-  h += '</div></div>';
-  h += '<div style="max-width:1100px;margin:0 auto;padding:40px 32px">';
-  h += '<div class="grid">'+rows+'</div>'+empty;
-  h += '<div style="text-align:center;font-size:9px;color:#3d5940;letter-spacing:1px;padding:20px;border-top:1px solid #1c2b1e;line-height:2">DEVNET DEMO ONLY · Not financial advice</div>';
-  h += '<div id="toast" style="display:none;position:fixed;bottom:24px;right:24px;background:#0c110d;border:1px solid #2dff7f;color:#2dff7f;padding:14px 20px;font-size:10px;letter-spacing:1px;z-index:100"></div>';
-  h += '<scr'+'ipt>';
-  h += 'function handleBuy(idx,community,etsVal,goVal){';
-  h += 'var btn=document.getElementById("buybtn"+idx);';
-  h += 'if(!btn||btn.disabled)return;';
-  h += 'btn.textContent="Processing...";btn.disabled=true;btn.style.background="#555";';
-  h += 'setTimeout(function(){';
-  h += '  btn.textContent="Sold!";btn.style.background="#3d5940";';
-  h += '  var card=btn.parentElement;if(card){card.style.opacity="0.5";}';
-  h += '  var total=(parseFloat(etsVal)+parseFloat(goVal)).toFixed(4);';
-  h += '  var t=document.getElementById("toast");';
-  h += '  if(t){t.textContent="Credit sold for "+total;t.style.display="block";setTimeout(function(){t.style.display="none"},4000);}';
-  h += '  try{if(window.opener&&window.opener.postMessage)window.opener.postMessage({type:"carbon_sold",community:community,amount:parseFloat(etsVal)+parseFloat(goVal)},"*");}catch(e){}';
-  h += '},1200);';
-  h += '}';
-  h += '</'+'script>';
-  h += '</div></body></html>';
-  w.document.write(h);
-  w.document.close();
+
+  var statsHtml =
+    '<div style="display:inline-grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#1c2b1e;border:1px solid #1c2b1e;margin:20px 0">' +
+    '<div style="background:#0c110d;padding:16px 20px;text-align:center"><div style="font-size:22px;font-weight:700;color:#2dff7f">'+totalKg.toFixed(2)+'</div><div style="font-size:9px;letter-spacing:2px;color:#3d5940">kg CO₂</div></div>' +
+    '<div style="background:#0c110d;padding:16px 20px;text-align:center"><div style="font-size:22px;font-weight:700;color:#2dff7f">'+credits.length+'</div><div style="font-size:9px;letter-spacing:2px;color:#3d5940">'+(isES?'Lotes':'Batches')+'</div></div>' +
+    '<div style="background:#0c110d;padding:16px 20px;text-align:center"><div style="font-size:22px;font-weight:700;color:#2dff7f">€65/t</div><div style="font-size:9px;letter-spacing:2px;color:#3d5940">EU ETS</div></div>' +
+    '<div style="background:#0c110d;padding:16px 20px;text-align:center"><div style="font-size:22px;font-weight:700;color:#2dff7f">€2.50</div><div style="font-size:9px;letter-spacing:2px;color:#3d5940">GO /MWh</div></div>' +
+    '</div>';
+
+  var cardsHtml = '';
+  if(credits.length === 0) {
+    cardsHtml = '<div style="text-align:center;padding:40px;color:#3d5940;font-family:var(--mono);font-size:11px">'+txt.nocredits+'</div>';
+  } else {
+    cardsHtml = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:20px 0">';
+    credits.forEach(function(c, i) {
+      var ets = (c.kg/1000*65).toFixed(4);
+      var go  = (c.kwh/1000*2.5).toFixed(4);
+      var tot = (parseFloat(ets)+parseFloat(go)).toFixed(4);
+      var dt  = new Date(c.timestamp).toLocaleDateString('en-GB');
+      var soldOut = c.sold ? true : false;
+      cardsHtml +=
+        '<div id="mp-card-'+i+'" style="background:var(--surface2);border:1px solid '+(soldOut?'var(--border)':'#b060ff33')+';padding:20px;position:relative;opacity:'+(soldOut?'0.5':'1')+'">' +
+        '<div style="position:absolute;top:10px;right:10px;font-size:8px;letter-spacing:1px;padding:2px 8px;border-radius:2px;background:'+(soldOut?'rgba(255,51,85,0.1)':'rgba(45,255,127,0.1)')+';color:'+(soldOut?'#ff3355':'#2dff7f')+';border:1px solid '+(soldOut?'#ff3355':'#2dff7f')+'">'+(soldOut?txt.sold:txt.avail)+'</div>' +
+        '<div style="font-family:var(--display);font-size:14px;font-weight:700;color:var(--green);margin-bottom:6px">'+c.community+'</div>' +
+        '<div style="font-size:9px;color:var(--text-dim);margin-bottom:8px">'+dt+' · Solar PV</div>' +
+        '<div style="font-size:26px;font-weight:700;color:#b060ff;margin:8px 0 2px">'+c.kg+' kg</div>' +
+        '<div style="font-size:9px;letter-spacing:1px;color:var(--text-dim);margin-bottom:10px">'+txt.co2label+'</div>' +
+        '<div style="font-family:var(--mono);font-size:10px;margin-bottom:12px">' +
+          '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-dim)">'+txt.energy+'</span><span>'+c.kwh+' kWh</span></div>' +
+          '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-dim)">'+txt.ets+'</span><span style="color:#b060ff">€'+ets+'</span></div>' +
+          '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-dim)">'+txt.go+'</span><span style="color:var(--blue)">€'+go+'</span></div>' +
+        '</div>' +
+        '<div style="background:var(--surface);border:1px solid #b060ff;padding:10px;text-align:center;margin-bottom:10px">' +
+          '<div style="font-size:20px;font-weight:700;color:#b060ff;font-family:var(--mono)">€'+tot+'</div>' +
+          '<div style="font-size:9px;color:var(--text-dim);letter-spacing:1px">'+txt.bundle+'</div>' +
+        '</div>' +
+        '<button id="mp-btn-'+i+'" onclick="buyCarbonCredit('+i+')" '+(soldOut?'disabled ':'')+'style="width:100%;background:'+(soldOut?'var(--surface3)':'#b060ff')+';border:none;color:'+(soldOut?'var(--text-dim)':'#fff')+';padding:10px;cursor:'+(soldOut?'not-allowed':'pointer')+';font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:2px;border-radius:2px;margin-bottom:8px">'+(soldOut?'SOLD':''+txt.buy)+'</button>' +
+        '<a href="https://explorer.solana.com/tx/'+c.txSig+'?cluster=devnet" target="_blank" style="font-size:9px;color:var(--blue);text-decoration:none;display:block;text-align:center">'+txt.explorer+' →</a>' +
+        '</div>';
+    });
+    cardsHtml += '</div>';
+  }
+
+  var content = document.getElementById('marketplace-content');
+  content.innerHTML =
+    '<div style="text-align:center;padding-bottom:20px;border-bottom:1px solid var(--border);margin-bottom:20px">' +
+      '<div style="font-family:var(--display);font-size:28px;font-weight:800;color:var(--green)">⚡ '+txt.title.toUpperCase()+'</div>' +
+      '<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text-dim);margin-top:4px">'+txt.subtitle+'</div>' +
+      statsHtml +
+    '</div>' +
+    cardsHtml +
+    '<div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;padding-top:16px;border-top:1px solid var(--border)">' +
+      txt.devnet+' · Not financial advice</div>';
+
+  document.getElementById('modal-marketplace').classList.add('open');
+}
+
+function buyCarbonCredit(idx) {
+  var btn = document.getElementById('mp-btn-'+idx);
+  var card = document.getElementById('mp-card-'+idx);
+  if(!btn || btn.disabled) return;
+  btn.textContent = '...';btn.disabled=true;btn.style.background='#555';
+  setTimeout(function(){
+    btn.textContent = '✅ SOLD';btn.style.background='var(--surface3)';btn.style.color='var(--text-dim)';
+    if(card){card.style.opacity='0.5';}
+    var badge = card ? card.querySelector('[style*="position:absolute"]') : null;
+    if(badge){badge.textContent='SOLD';badge.style.color='#ff3355';badge.style.borderColor='#ff3355';badge.style.background='rgba(255,51,85,0.1)';}
+    // Mark as sold in log
+    if(carbonCreditsLog[idx]) {
+      carbonCreditsLog[idx].sold = true;
+      var c = carbonCreditsLog[idx];
+      var saleAmount = parseFloat((c.kg/1000*65).toFixed(4)) + parseFloat((c.kwh/1000*2.5).toFixed(4));
+      // Add sale to escrow
+      var comm = communities.find(function(x){return x.name===c.community;});
+      if(comm){comm.escrow+=saleAmount;saveCommunities();}
+      recordEscrowYield(c.community, saleAmount, 'CARBON_SALE');
+      addLog('CARBON','Credit sold: €'+saleAmount.toFixed(4)+' → '+c.community+' escrow');
+      try{localStorage.setItem('voltcore_carbon_credits',JSON.stringify(carbonCreditsLog));}catch(e){}
+    }
+  },1200);
 }
 
 // ─────────────────────────────────────────────
@@ -2197,7 +2305,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   });
 
-  const globals={showPage,applyLang,setLang,renderEscrowPage,saveCommunities,generateSolanaKeypair,regenWallet,connectWallet,toggleTimeMode,onHourSlider,goStep,validateStep,onTypeChange,updateAllEstimates,updateCostEstimate,addMember,removeMember,updateMembersTotal,renderFullProjection,startDeploy,onDeployComplete,toggleCommunity,deleteCommunity,renderFinancials,addLog,tick,openModal,closeModal,execSettle,execEscrow,execCarbon,execYield,execAddMember,openCarbonMarketplace,renderCarbonCredits};
+  const globals={showPage,applyLang,setLang,renderEscrowPage,saveCommunities,generateSolanaKeypair,regenWallet,buyCarbonCredit,removeMemberFromCommunity,connectWallet,toggleTimeMode,onHourSlider,goStep,validateStep,onTypeChange,updateAllEstimates,updateCostEstimate,addMember,removeMember,updateMembersTotal,renderFullProjection,startDeploy,onDeployComplete,toggleCommunity,deleteCommunity,renderFinancials,addLog,tick,openModal,closeModal,execSettle,execEscrow,execCarbon,execYield,execAddMember,openCarbonMarketplace,renderCarbonCredits};
   Object.assign(window,globals);
 
   for(let i=0;i<24;i++) priceHistory.push(getOracle(new Date(Date.now()-i*3600000)));

@@ -1,198 +1,216 @@
-# ⚡ VOLTCORE
+# ⚡ VOLTCORE — Community Energy Protocol
 
-> **The first AI-powered settlement layer for community energy cooperatives — built on Solana.**
-
-[![Solana](https://img.shields.io/badge/Solana-Devnet-9945FF?logo=solana)](https://solana.com)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python)](https://python.org)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![Hackathon](https://img.shields.io/badge/Colosseum-Frontier%202025-orange)](https://colosseum.com/frontier)
+> **Colosseum Frontier Hackathon 2026**  
+> On-chain infrastructure for renewable energy communities on Solana
 
 ---
 
-## The Problem
+## What is VOLTCORE?
 
-Spain has **2,400+ registered energy communities** sharing solar power with zero digital infrastructure. They settle accounts manually on spreadsheets, wait quarterly for payments, and trust a cooperative manager with their money.
+VOLTCORE is a Solana smart contract protocol that enables **collective solar energy communities** to govern shared infrastructure, settle energy production on-chain, distribute yield to members, and trade verified carbon credits — all transparently and automatically.
 
-The EU Energy Communities Directive requires transparent, democratic governance. Nobody has built the infrastructure to make that real — until now.
-
----
-
-## What VOLTCORE Does
-
-VOLTCORE is an AI agent on Solana that:
-
-- 📡 **Reads** official smart meter data (SIPS) and IoT inverter APIs automatically
-- 🧠 **Calculates** fair energy allocation between members every 15 minutes
-- ⚡ **Settles** payments on-chain in under 1 second — no manager, no disputes
-- 📈 **Compounds** community surplus into ReFi yield automatically
-- 🔗 **Records** every kilowatt and every euro immutably on Solana
+Built for the Spanish market under **RD 244/2019** (collective self-consumption) and **EU RED II** (Renewable Energy Communities Directive).
 
 ---
 
-## Two Flows
+## Live Demo
 
-### 🔌 On-Grid Communities
-For urban neighborhoods connected to the national grid.
-
-```
-Solar production → Self consumption (savings) + Excess sold to grid
-                                                      ↓
-                                          Chainlink oracle → REE spot price
-                                                      ↓
-                                          Combined revenue → Debt repayment
-                                                           → Community treasury
-                                                           → ReFi yield
-```
-
-### 🌿 Off-Grid Communities
-For rural villages, islands, and remote areas.
-
-```
-Solar + Battery → 100% self consumption (savings)
-                                    ↓
-                          Reference price valuation
-                                    ↓
-                          Savings → Debt repayment
-                                  → Community treasury
-                                  → ReFi yield
-```
+- **Program ID (devnet):** `FRj8srGr4EvzhFgEsQ6x5iHYM9zQYmmuUZApAAy1D2p4`
+- **Dashboard:** `http://localhost:8080/dashboard_v4.html`
+- **Network:** Solana Devnet
 
 ---
 
-## Revenue Flows
-
-| Stream | On-Grid | Off-Grid |
-|--------|---------|----------|
-| Energy savings | ✅ Grid price avoided | ✅ Full energy cost avoided |
-| Excess energy | ✅ Sold at REE spot price (oracle) | ❌ Stored in battery |
-| ReFi yield | ✅ 6% APY on treasury | ✅ 6% APY on treasury |
-
-**Allocation per settlement:**
-- 60% → Infrastructure debt repayment
-- 15% → Community green treasury (staked for ReFi yield)
-- 20% → Operations
-- 5%  → VOLTCORE protocol fee
-
----
-
-## Technology Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Blockchain | Solana (Anchor framework) |
-| AI Agent | Python — settlement + anomaly detection |
-| Price Oracle | Chainlink → REE PVPC spot price |
-| On-Grid Data | SIPS smart meter API (Spain) |
-| Off-Grid Data | SolarEdge / Shelly IoT inverter APIs |
-| Solar Forecasting | PVGIS (EU Solar Atlas — free) |
-| Frontend | Next.js dashboard |
-| ReFi Yield | Sunrise Stake / Solana stablecoin pools |
-
----
-
-## Smart Contracts (Solana / Anchor)
-
-```
-programs/voltcore/
-├── CommunityRegistry     — initialize, add members, set mode (ON_GRID | OFF_GRID)
-├── SettlementEngine      — record energy data, calculate allocation, trigger payments
-├── TreasuryManager       — stake to ReFi, distribute yield, fund new communities
-└── InvestmentNFT         — mint on join, track debt repaid, burn when debt = 0
-```
-
----
-
-## Project Structure
+## Architecture
 
 ```
 voltcore/
-├── programs/           # Solana smart contracts (Rust/Anchor)
-│   └── voltcore/
-│       └── src/
-│           └── lib.rs
-├── app/                # Next.js frontend dashboard
-│   ├── components/
-│   └── pages/
-├── agent/              # AI settlement agent (Python)
-│   ├── settlement.py   # Core allocation algorithm ← START HERE
-│   ├── oracle.py       # Chainlink price feed integration
-│   ├── meter.py        # SIPS + IoT data ingestion
-│   └── mock/           # Simulated data for demo
-│       ├── on_grid_mock.json
-│       └── off_grid_mock.json
-├── scripts/            # Deploy + test scripts
-└── README.md
+├── programs/voltcore/src/lib.rs    # Anchor smart contract
+├── dashboard_v4.html               # Full-stack dashboard (single file)
+├── Anchor.toml                     # Anchor config
+└── keypair.json                    # Program upgrade authority
+```
+
+### Smart Contract (`lib.rs`)
+
+Five on-chain instructions:
+
+| Instruction | Description |
+|---|---|
+| `initialize_community` | Creates a community PDA with name, mode, investment, reference price |
+| `add_member` | Registers a member PDA with investment share in basis points |
+| `record_settlement` | Records an energy settlement period — production, self-consumption, excess, oracle price |
+| `distribute_yield` | Distributes treasury yield to a registered member PDA |
+| `stake_to_refi` | Stakes treasury to ReFi pool (Sunrise Stake integration stub) |
+
+### Account Structure
+
+```rust
+Community {
+    authority: Pubkey,         // Community creator
+    name: String,              // Community name (used in PDA seed)
+    mode: CommunityMode,       // OnGrid | OffGrid
+    total_investment: u64,     // Total CAPEX in micro-EUR
+    total_debt: u64,           // Remaining infrastructure debt
+    total_repaid: u64,         // Cumulative debt repaid
+    treasury_balance: u64,     // On-chain escrow balance
+    total_yield: u64,          // Cumulative yield distributed
+    reference_price: u64,      // Grid price in micro-EUR/kWh
+    member_count: u8,
+    settlement_count: u64,
+    bump: u8,
+}
+
+MemberAccount {
+    community: Pubkey,
+    wallet: Pubkey,
+    investment: u64,
+    share_bps: u64,            // Basis points (10000 = 100%)
+    debt_repaid: u64,
+    yield_earned: u64,
+    bump: u8,
+}
+```
+
+### PDA Seeds
+
+```
+Community:  ["community", authority_pubkey, community_name_bytes]
+Member:     ["member", community_pda, member_wallet_pubkey]
 ```
 
 ---
 
-## Quickstart
+## Dashboard Features
 
+### Protocol Overview
+- Real-time energy production simulation (PVGIS-based solar physics)
+- Live REE oracle price with peak/valley/flat periods
+- Protocol KPIs: communities, energy produced, grid cost, escrow, CO₂, debt repaid
+- Full EN/ES translation with persistent language toggle
+
+### Community Management
+- Deploy new communities to Solana devnet in 6 steps
+- Communities persist across sessions via `localStorage`
+- Expand any community to see energy flow, financials, members, debt repayment
+- On-grid (grid-connected) and off-grid (battery) modes
+
+### On-Chain Actions (per community)
+1. **⚡ Record Settlement** — submits `record_settlement` with live simulation data
+2. **🏦 Deposit Escrow** — raw SOL transfer to community PDA vault
+3. **🌿 Mint Carbon Credits** — records credits via Solana Memo Program with JSON payload
+4. **💸 Distribute Yield** — batch yield distribution to registered members
+5. **👤 Add Member** — registers new member PDA on-chain
+
+### Carbon Credits Marketplace
+- On-chain registry of all minted credits (community, kWh, kg CO₂, ETS value, GO value)
+- Inline marketplace modal — no popup blocker issues
+- Buy flow: credit marked sold → sale value flows to community escrow fund
+- EU ETS pricing (€65/tonne) + GO certificates (€2.50/MWh)
+
+### Escrow Fund Page
+- Total escrow breakdown: solar revenue (15%) + carbon sales + direct deposits
+- Per-community and per-member escrow share
+- Full transaction log with Solana Explorer links
+
+### Financial Transparency
+- Revenue allocation: 55% debt / 15% escrow / 20% operations / 2% insurance / 5% protocol
+- 5-year escrow projection at 5.5% APY
+- Member-level savings, escrow, and carbon revenue breakdown
+
+### Regulatory Compliance
+- Spain: RD 244/2019, RD 23/2020, CNMC reporting
+- EU: RED II (2018/2001), EU ETS, Guarantees of Origin (GO)
+- Parametric insurance model (trigger < 70% expected production)
+
+---
+
+## Build & Deploy
+
+### Prerequisites
 ```bash
-# Clone
-git clone https://github.com/Amentinho/voltcore.git
-cd voltcore
+# Rust + Anchor
+rustup install 1.85
+cargo install --git https://github.com/coral-xyz/anchor anchor-cli --locked
+solana-install init 1.18.x
 
-# Run the settlement engine (no Solana needed)
-pip install -r requirements.txt
-python3 agent/settlement.py
+# Set devnet
+solana config set --url devnet
+solana airdrop 2
+```
 
-# Deploy to Solana devnet
-anchor build
-anchor deploy --provider.cluster devnet
+### Build & Deploy Program
+```bash
+cd programs/voltcore
+
+# Build
+cargo build-sbf
+
+# Deploy (first time)
+solana program deploy target/deploy/voltcore.so --url devnet
+
+# Upgrade (with keypair authority)
+solana program deploy target/deploy/voltcore.so \
+  --program-id FRj8srGr4EvzhFgEsQ6x5iHYM9zQYmmuUZApAAy1D2p4 \
+  --upgrade-authority keypair.json \
+  --url devnet
+```
+
+### Run Dashboard
+```bash
+# From project root
+npx http-server . -p 8080
+
+# Open
+open http://localhost:8080/dashboard_v4.html
 ```
 
 ---
 
-## The Numbers
+## End-to-End Demo Flow
 
-**On-Grid — 10 families, Barcelona (€30,000 invested)**
-- Monthly revenue: ~€473 (savings + excess energy)
-- Debt repaid monthly: €284
-- Treasury growth: €71/month compounding at 6% APY
-- Debt-free in: ~94 months → pure yield from that point
-
-**Off-Grid — 8 families, Extremadura (€40,000 invested)**
-- Monthly savings: €600
-- Debt repaid monthly: €360
-- Treasury growth: €90/month compounding at 6% APY
-- Debt-free in: ~111 months → pure yield from that point
+1. Connect Phantom wallet (devnet)
+2. **+ New Community** → fill 6 steps → Deploy to Solana → TX confirmed
+3. Expand community → **⚡ Record Settlement** → on-chain settlement recorded
+4. **🌿 Mint Carbon Credits** → Memo TX → credits appear in Carbon tab
+5. **Carbon tab** → Open Marketplace → Buy credit → value flows to escrow
+6. **🏦 Deposit Escrow** → SOL transfer to community PDA
+7. **👤 Add Member** → member PDA created on-chain
+8. **💸 Distribute Yield** → batch yield to all members
+9. **Escrow tab** → full breakdown of all fund flows
 
 ---
 
-## Why Solana
+## Technical Decisions
 
-- **Speed**: Settlement every 15 minutes requires sub-second finality
-- **Cost**: €0.00025/transaction — viable for energy micropayments
-- **Oracle**: Chainlink native on Solana for REE price feeds
-- **Transparency**: Every member audits every transaction in real time
-- **DAO**: On-chain governance for treasury investment decisions
+| Decision | Rationale |
+|---|---|
+| Single HTML file dashboard | Zero-dependency deployment, easy demo sharing |
+| Raw `DataView` for SOL transfers | Avoids `Buffer` polyfill conflicts with Phantom's lockdown-install.js |
+| Solana Memo Program for carbon credits | No custom token mint needed for hackathon demo — verifiable on-chain record |
+| localStorage persistence | Communities survive page refresh without backend |
+| `applyLang()` called every tick | Translations persist through DOM re-renders |
+| PVGIS solar physics simulation | Realistic production curves based on real Spanish irradiance data |
 
 ---
 
-## Why Now
+## Known Limitations (Hackathon Scope)
 
-- 🇪🇺 EU Energy Communities Directive (2023) — legally mandates democratic governance
-- 🇪🇸 Spain: 2,400+ registered communities, zero digital infrastructure
-- 🌍 EU target: 10,000 energy communities by 2030
-- ☀️ Spain: 300 sunny days/year — highest solar potential in continental Europe
+- Carbon credits use Memo Program (not a full SPL token mint)
+- `distribute_yield` requires member to have been registered via `add_member` with the same wallet
+- Escrow APY is simulated in frontend (not enforced on-chain)
+- Insurance payouts are UI-only (not triggered by oracle)
+- `stake_to_refi` is a stub (Sunrise Stake CPI not implemented)
 
 ---
 
 ## Team
 
-**Andrea** — Program Manager & Founder  
-7+ years in AI/ML and Web3 program delivery. Renewable Energy Engineering MSc.  
-Previously: VoltGrid (Mantle Hackathon), GreenStake (ETHGlobal winner), VirtusGreen.  
-Based in Barcelona 🇪🇸
+Built by **Andrea Amenta** ([@Amentinho](https://github.com/Amentinho))  
+Barcelona · May 2026
 
 ---
 
-## Hackathon
+## License
 
-Built for the **Colosseum Frontier Hackathon** — La Familia track (Spain 🇪🇸)  
-Submitted on [Colosseum](https://colosseum.com/frontier) and Superteam Earn.
-
----
-
-*VOLTCORE — Energy owned by the people who power it.*
+MIT
