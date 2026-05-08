@@ -6,10 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-voltcore = "FRj8srGr4EvzhFgEsQ6x5iHYM9zQYmmuUZApAAy1D2p4"
-
-[registry]
-url = "https://api.apr.dev"
+voltcore = "H6FCc1Y4i1DYsBfsEkpK9fkHzUeZymv6G1t63Nm3GiFq"
 
 [provider]
 cluster = "devnet"
@@ -17,3 +14,5 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[hooks]
