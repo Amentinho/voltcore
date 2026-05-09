@@ -96,11 +96,43 @@ Member:     ["member", community_pda, member_wallet_pubkey]
 - On-grid (grid-connected) and off-grid (battery) modes
 
 ### On-Chain Actions (per community)
-1. **⚡ Record Settlement** — submits `record_settlement` with live simulation data
-2. **🏦 Deposit Escrow** — raw SOL transfer to community PDA vault
-3. **🌿 Mint Carbon Credits** — records credits via Solana Memo Program with JSON payload
-4. **💸 Distribute Yield** — batch yield distribution to registered members
-5. **👤 Add Member** — registers new member PDA on-chain
+
+Each community card has 5 action buttons at the bottom:
+
+| Button | What it does | On-chain |
+|---|---|---|
+| ⚡ Record Settlement | Records energy production, self-consumption, excess, oracle price for a period | `record_settlement` instruction |
+| 🏦 Deposit Escrow | Transfers SOL from your wallet to the community PDA vault | Raw SystemProgram transfer |
+| 🌿 Mint Carbon Credits | Issues carbon credit certificate signed by authority wallet with full metadata | Solana Memo Program |
+| 💸 Distribute Yield | Sends SOL proportionally to all member wallets based on accumulated escrow | Batch SystemProgram transfers |
+| 👤 Add Member | Adds a new member with name, wallet address, and investment amount | `add_member` instruction |
+
+### Member Management (Dashboard UI)
+
+**Adding a member via community creator (Steps 1-6):**
+- Each member row has: Name field + Investment (€) + Wallet address + ↻ regenerate button
+- Click **+ Add Member** to add more rows
+- Wallet addresses are auto-generated using `crypto.getRandomValues` (valid Solana pubkeys)
+- Click ↻ to regenerate a wallet address
+- Investment in € (same units as other members — e.g. €3,000)
+
+**Adding a member after deployment:**
+- Expand community → click **👤 Add Member**
+- Fill in name, wallet address (auto-generated), investment in €
+- Calls `add_member` on-chain — creates a member PDA
+- New member starts with €0 accumulated escrow (earns from join date forward)
+
+**Removing a member:**
+- Expand community → Members section → click **✕** next to a member
+- Members with remaining debt share show a 🔒 icon — must repay before removing
+- Members with no debt can be removed immediately
+- Their escrow share is returned to the community pool
+
+**Removing a community:**
+- Click **✕ Remove** button on the community card header
+- Confirms before removing
+- Only removes from local dashboard — the on-chain PDA remains on Solana devnet
+- To permanently close the account on-chain, use `solana program close` (not implemented in UI)
 
 ### Carbon Credits Marketplace
 - On-chain registry of all minted credits (community, kWh, kg CO₂, ETS value, GO value)
@@ -169,15 +201,35 @@ open http://localhost:8080/dashboard_v4.html
 
 ## End-to-End Demo Flow
 
-1. Connect Phantom wallet (devnet)
-2. **+ New Community** → fill 6 steps → Deploy to Solana → TX confirmed
-3. Expand community → **⚡ Record Settlement** → on-chain settlement recorded
-4. **🌿 Mint Carbon Credits** → Memo TX → credits appear in Carbon tab
-5. **Carbon tab** → Open Marketplace → Buy credit → value flows to escrow
-6. **🏦 Deposit Escrow** → SOL transfer to community PDA
-7. **👤 Add Member** → member PDA created on-chain
-8. **💸 Distribute Yield** → batch yield to all members
-9. **Escrow tab** → full breakdown of all fund flows
+### Setup
+1. Open https://amentinho.github.io/voltcore/dashboard_v4.html
+2. Connect Phantom wallet (set to Solana Devnet)
+3. Get devnet SOL if needed: `solana airdrop 2 --url devnet`
+
+### Create & Deploy
+4. Click **+ New Community** → 6-step wizard:
+   - Step 1: Name, type (On-Grid/Off-Grid), location, households, reference price
+   - Step 2: Solar config — panels, Wp, orientation, tilt (PVGIS estimate updates live)
+   - Step 3: Cost estimation — panel cost, installation, maintenance, bank loan
+   - Step 4: Members — add names, investments, wallets (auto-generated, click ↻ to regenerate)
+   - Step 5: Financial projection — 20-year model
+   - Step 6: Deploy → Phantom popup → confirm → community appears in dashboard
+5. Expand the community card to see energy flow, financials, members, debt bar
+
+### On-Chain Operations
+6. **⚡ Record Settlement** → values pre-filled from simulation → Phantom → FINALIZED
+7. **🌿 Mint Carbon Credits** → authority-signed certificate → Phantom → FINALIZED
+8. **Carbon tab** → view registry → **🛒 Open Marketplace** → Buy → value → Escrow
+9. **🏦 Deposit Escrow** → enter SOL amount → Phantom → FINALIZED
+10. **👤 Add Member** → name + wallet + investment → Phantom → FINALIZED
+11. **💸 Distribute Yield** → select All Members or individual → Phantom → FINALIZED
+
+### Manage
+12. **Remove member** → expand community → Members → ✕ (only if no debt)
+13. **Remove community** → ✕ Remove button on card header → confirm
+14. **Escrow tab** → full breakdown: solar revenue / carbon sales / deposits / per-member
+15. **Financials tab** → revenue allocation, cost breakdown, 5-year projection
+16. **EN/ES toggle** → full Spanish translation of all UI elements
 
 ---
 
